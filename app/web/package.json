@@ -6,8 +6,7 @@
   "scripts": {
     "dev": "astro dev",
     "build": "astro build",
-    "preview": "astro preview",
-    "check:responsive": "node ./scripts/responsive-viewer.mjs"
+    "preview": "astro preview"
   },
   "dependencies": {
     "@astrojs/node": "^9.4.2",

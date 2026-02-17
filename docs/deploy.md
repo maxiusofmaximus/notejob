@@ -84,23 +84,16 @@
 - Criterio de operación: nuevas pruebas y desarrollo apuntan primero a D1; Supabase se conserva para compatibilidad.
 
 ## Operación local frontend (dev)
-1. Arranque rápido (doble clic):
-   `scripts/run-web-prototype.cmd`
-2. O por terminal:
+1. Por terminal:
    - `cd app/web`
    - `bun install`
    - `bun run dev`
-3. Test responsive:
-   - `cd app/web`
-   - `bun run check:responsive`
 
 ## Operación de despliegue de datos (dev)
 1. Reset rápido si se requiere ambiente limpio:
    `powershell -ExecutionPolicy Bypass -File scripts/d1-reset-dev.ps1 -Force`
 2. Validación de integridad:
    `powershell -ExecutionPolicy Bypass -File scripts/d1-test.ps1`
-3. Smoke de variables si se modificaron secretos:
-   `scripts/run-env-smoke.cmd`
 
 ## Pipeline recomendado
 1. Lint + tests en GitHub Actions.

@@ -43,8 +43,6 @@ La meta es capturar ideas (internet o archivos), convertirlas en tareas de inves
 - Seed real: `powershell -ExecutionPolicy Bypass -File scripts/d1-seed.ps1`
 - Reset rápido D1 (forzado): `powershell -ExecutionPolicy Bypass -File scripts/d1-reset-dev.ps1 -Force`
 - Pruebas D1: `powershell -ExecutionPolicy Bypass -File scripts/d1-test.ps1`
-- Smoke env por checklist: `scripts/run-env-smoke.cmd`
-- Prototipo UI Astro (doble clic): `scripts/run-web-prototype.cmd`
 
 ## Frontend web (Astro)
 Desde `app/web`:
@@ -52,10 +50,8 @@ Desde `app/web`:
 - Desarrollo: `bun run dev`
 - Build: `bun run build`
 - Preview: `bun run preview`
-- Responsive snapshots (Playwright): `bun run check:responsive`
 
 ## Referencias
-- Replanteamiento y flujo del agente: `docs/agent-tasks.md`
 - Arquitectura: `docs/architecture.md`
 - Modelo de datos: `docs/database.md`
 - API objetivo: `docs/api.md`

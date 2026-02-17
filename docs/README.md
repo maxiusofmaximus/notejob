@@ -14,7 +14,6 @@
 
 ## Seguridad
 - `docs/security-secrets.md` -> secretos y buenas prácticas.
-- `docs/skills-recommendations.md` -> skills sugeridas desde skills.sh.
 
 ## Notas
 - En la app desplegada también existe un docs hub en `/docs`.
