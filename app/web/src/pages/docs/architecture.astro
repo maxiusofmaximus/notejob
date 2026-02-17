@@ -1,0 +1,76 @@
+---
+import MainLayout from "../../layouts/MainLayout.astro";
+---
+<MainLayout title="NoteJob Docs · Architecture" description="System architecture for NoteJob." page="landing">
+  <main class="app-shell landing-main">
+    <section class="panel hero-copy">
+      <h1 style="font-size:clamp(1.6rem,4vw,2.2rem);">Architecture</h1>
+      <p>Live architecture documentation with Mermaid diagrams.</p>
+      <div class="hero-ctas">
+        <a class="btn" href="/docs">Back to docs</a>
+      </div>
+    </section>
+
+    <section class="panel hero-copy">
+      <h2>Component map</h2>
+      <pre class="mermaid">
+flowchart LR
+  U["User Browser"] --> W["NoteJob Web App"]
+  W --> FA["Firebase Auth"]
+  W --> LAPI["/api/locale"]
+  W --> AIP["AI Provider API"]
+  W --> AL["/api/admin/login"]
+  W --> AS["/api/admin/session"]
+  W --> AO["/api/admin/logout"]
+  LAPI --> IPG["ip.guide"]
+  AL --> AC["Admin Credentials Env"]
+  AS --> AC
+  AO --> AC
+  W --> LS[("LocalStorage")]
+  LS --> VC["Encrypted Vault"]
+  LS --> SC["Site Customization"]
+      </pre>
+    </section>
+
+    <section class="panel hero-copy">
+      <h2>Functional flow</h2>
+      <pre class="mermaid">
+flowchart TD
+  I["Idea / Input"] --> T["Task"]
+  T --> ST["Subtasks + Dates"]
+  ST --> P["Project"]
+  ST --> R["Resource"]
+  P --> R
+  R --> E["Edit / Export"]
+  E --> K["Knowledge Reuse"]
+      </pre>
+    </section>
+
+    <section class="panel hero-copy">
+      <h2>Admin security flow</h2>
+      <pre class="mermaid">
+sequenceDiagram
+  participant B as Browser
+  participant A as /api/admin/login
+  participant M as Middleware
+  participant P as /admin
+
+  B->>A: POST username/password
+  A-->>B: Set-Cookie HttpOnly signed session
+  B->>M: GET /admin with cookie
+  M->>M: Verify HMAC + exp + route protection
+  M-->>P: Allow access
+      </pre>
+    </section>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js" defer></script>
+  <script is:inline>
+    window.addEventListener("load", () => {
+      const m = window.mermaid;
+      if (!m) return;
+      m.initialize({ startOnLoad: false, theme: "dark", securityLevel: "strict" });
+      m.run({ querySelector: ".mermaid" }).catch(() => {});
+    });
+  </script>
+</MainLayout>

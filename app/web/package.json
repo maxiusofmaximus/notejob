@@ -1,0 +1,23 @@
+{
+  "name": "notejob-web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "check:responsive": "node ./scripts/responsive-viewer.mjs"
+  },
+  "dependencies": {
+    "@astrojs/node": "^9.4.2",
+    "animejs": "^3.2.2",
+    "astro": "^5.2.0",
+    "gridstack": "^10.2.0",
+    "gsap": "^3.12.5"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.51.1",
+    "sass": "^1.77.8"
+  }
+}

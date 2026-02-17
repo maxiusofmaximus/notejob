@@ -1,0 +1,50 @@
+---
+import MainLayout from "../../layouts/MainLayout.astro";
+---
+<MainLayout title="NoteJob Admin · Site Builder" description="Customize website design and content." page="app">
+  <main class="app-shell landing-main">
+    <section class="panel hero-copy">
+      <div style="display:flex;justify-content:space-between;gap:0.8rem;flex-wrap:wrap;">
+        <div>
+          <span class="kicker">Admin Builder</span>
+          <h1 style="font-size:clamp(1.5rem,4vw,2.15rem);margin-top:0.8rem;">Site appearance and content</h1>
+          <p>Drag section order, adjust colors, and edit key copy blocks.</p>
+        </div>
+        <div class="row">
+          <button id="adminSaveBtn" class="btn btn--primary" type="button">Save changes</button>
+          <button id="adminResetBtn" class="btn btn--ghost" type="button">Reset</button>
+          <button id="adminLogoutBtn" class="btn" type="button">Logout</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="section-grid" style="grid-template-columns: 1.3fr 1fr;">
+      <article class="feature-card">
+        <h3 style="margin-bottom:0.6rem;">Layout order</h3>
+        <div class="grid-stack admin-grid" id="adminGrid">
+          <div class="grid-stack-item" gs-id="hero" gs-x="0" gs-y="0" gs-w="12" gs-h="2"><div class="grid-stack-item-content">Hero section</div></div>
+          <div class="grid-stack-item" gs-id="workflow" gs-x="0" gs-y="2" gs-w="12" gs-h="2"><div class="grid-stack-item-content">Workflow section</div></div>
+          <div class="grid-stack-item" gs-id="audience" gs-x="0" gs-y="4" gs-w="12" gs-h="2"><div class="grid-stack-item-content">Audience section</div></div>
+          <div class="grid-stack-item" gs-id="contact" gs-x="0" gs-y="6" gs-w="12" gs-h="2"><div class="grid-stack-item-content">Contact section</div></div>
+        </div>
+      </article>
+
+      <article class="feature-card">
+        <h3 style="margin-bottom:0.6rem;">Theme and copy</h3>
+        <div class="form-field">Brand color <input id="adminBrandColor" type="color" value="#70f3c6" /></div>
+        <div class="form-field">Accent color <input id="adminAccentColor" type="color" value="#7ca3ff" /></div>
+        <div class="form-field">Background tint <input id="adminBgColor" type="color" value="#0d1521" /></div>
+        <div class="form-field">Tagline <input id="adminTagline" type="text" /></div>
+        <div class="form-field">Hero title <input id="adminHeroTitle" type="text" /></div>
+        <div class="form-field">Hero text <textarea id="adminHeroText" rows="4"></textarea></div>
+        <div class="form-field">Primary CTA label <input id="adminCtaLabel" type="text" /></div>
+      </article>
+    </section>
+
+    <p id="adminStatus" class="footer-note">No changes yet.</p>
+  </main>
+
+  <script>
+    import "../../scripts/admin.ts";
+  </script>
+</MainLayout>

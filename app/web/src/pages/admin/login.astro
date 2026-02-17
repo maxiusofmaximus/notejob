@@ -1,0 +1,28 @@
+---
+import MainLayout from "../../layouts/MainLayout.astro";
+---
+<MainLayout title="NoteJob Admin · Login" description="Secure admin access for site customization." page="app">
+  <main class="app-shell landing-main" style="min-height:70vh;align-content:center;">
+    <section class="panel hero-copy">
+      <span class="kicker">Admin Access</span>
+      <h1 style="font-size:clamp(1.6rem,4vw,2.2rem);">Secure sign-in required</h1>
+      <p>Admin changes affect branding, content, and layout. Enter server-side admin credentials.</p>
+      <form id="adminLoginForm" class="modal-card" style="margin-top:1rem;">
+        <label class="form-field">Username
+          <input id="adminUser" type="text" autocomplete="username" required />
+        </label>
+        <label class="form-field">Password
+          <input id="adminPass" type="password" autocomplete="current-password" required />
+        </label>
+        <div class="row">
+          <button class="btn btn--primary" type="submit">Login</button>
+          <a class="btn" href="/">Back</a>
+        </div>
+        <p id="adminLoginError" class="muted"></p>
+      </form>
+    </section>
+  </main>
+  <script>
+    import "../../scripts/admin-login.ts";
+  </script>
+</MainLayout>

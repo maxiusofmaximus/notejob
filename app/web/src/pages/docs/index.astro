@@ -1,0 +1,35 @@
+---
+import MainLayout from "../../layouts/MainLayout.astro";
+---
+<MainLayout title="NoteJob Docs" description="Documentation for NoteJob web app." page="landing">
+  <main class="app-shell landing-main">
+    <section class="panel hero-copy">
+      <span class="kicker">NoteJob Documentation</span>
+      <h1 style="font-size:clamp(1.7rem,4vw,2.5rem);">Docs hub</h1>
+      <p>Read architecture, functionality, deployment, and security notes from any deployed environment.</p>
+      <div class="hero-ctas">
+        <a class="btn btn--primary" href="/docs/architecture">Architecture (Mermaid)</a>
+        <a class="btn" href="/docs/web-app">Web App Guide</a>
+        <a class="btn" href="/docs/skills">Skills</a>
+      </div>
+    </section>
+
+    <section class="section-grid">
+      <article class="feature-card">
+        <h3>Core docs</h3>
+        <p><a href="/docs/architecture">/docs/architecture</a></p>
+        <p><a href="/docs/web-app">/docs/web-app</a></p>
+        <p><a href="/docs/skills">/docs/skills</a></p>
+      </article>
+      <article class="feature-card">
+        <h3>Operations</h3>
+        <p>Deploy and environment setup stay versioned via GitHub and deployed through Vercel.</p>
+        <p>Recommended flow: PR -> Vercel Preview -> Merge main.</p>
+      </article>
+      <article class="feature-card">
+        <h3>Security</h3>
+        <p>Admin auth is server-side, user auth via Firebase, and vault entries are encrypted in browser.</p>
+      </article>
+    </section>
+  </main>
+</MainLayout>

@@ -1,0 +1,29 @@
+---
+import MainLayout from "../../layouts/MainLayout.astro";
+---
+<MainLayout title="NoteJob Docs · Skills" description="Recommended skills for NoteJob workflows." page="landing">
+  <main class="app-shell landing-main">
+    <section class="panel hero-copy">
+      <h1 style="font-size:clamp(1.6rem,4vw,2.2rem);">Recommended skills (skills.sh)</h1>
+      <p>Shortlist based on product workflow needs (security, testing, UX quality).</p>
+      <div class="hero-ctas">
+        <a class="btn" href="/docs">Back to docs</a>
+      </div>
+    </section>
+
+    <section class="section-grid">
+      <article class="feature-card">
+        <h3>webapp-testing</h3>
+        <p>Use for E2E and regression checks on `/app`, `/admin`, `/docs`, and auth flows.</p>
+      </article>
+      <article class="feature-card">
+        <h3>better-auth-best-practices</h3>
+        <p>Use for secure session, credential, and authentication hardening reviews.</p>
+      </article>
+      <article class="feature-card">
+        <h3>audit-website</h3>
+        <p>Use for structured UX/content audits and conversion-quality checks.</p>
+      </article>
+    </section>
+  </main>
+</MainLayout>

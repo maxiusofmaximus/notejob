@@ -1,0 +1,43 @@
+---
+import MainLayout from "../../layouts/MainLayout.astro";
+---
+<MainLayout title="NoteJob Docs · Web App Guide" description="Functional guide for NoteJob web app." page="landing">
+  <main class="app-shell landing-main">
+    <section class="panel hero-copy">
+      <h1 style="font-size:clamp(1.6rem,4vw,2.2rem);">Web App Guide</h1>
+      <p>What each area does, why security matters, and how to configure AI/API usage.</p>
+      <div class="hero-ctas">
+        <a class="btn" href="/docs">Back to docs</a>
+      </div>
+    </section>
+
+    <section class="panel hero-copy">
+      <h2>App sections</h2>
+      <p><strong>Landing:</strong> product narrative and entry points to signup/login.</p>
+      <p><strong>Home/Workspace:</strong> metrics, tasks/projects overview, AI planner, and private vault.</p>
+      <p><strong>Admin:</strong> protected panel to change colors, text, and section order.</p>
+    </section>
+
+    <section class="panel hero-copy">
+      <h2>AI configuration</h2>
+      <p><strong>AI Base URL:</strong> endpoint compatible with OpenAI API.</p>
+      <p><strong>AI Model:</strong> model name used in chat completions.</p>
+      <p><strong>AI API Key:</strong> authorization token for your provider (for example Cerebras key through compatible gateway).</p>
+      <p>Without API key, the planner cannot generate task plans.</p>
+    </section>
+
+    <section class="panel hero-copy">
+      <h2>Why web security is required</h2>
+      <p>Authentication is necessary to protect private user data, personalized workspace state, and sensitive admin controls.</p>
+      <p>Admin controls are isolated with server-side session checks to prevent unauthorized design/content changes.</p>
+      <p>Sensitive snippets in the vault are encrypted locally before persistence.</p>
+    </section>
+
+    <section class="panel hero-copy">
+      <h2>How to use tasks, projects, and resources</h2>
+      <p>1. Create a task with title, summary, dates, subtasks, and tags.</p>
+      <p>2. Promote or create projects from validated task lines.</p>
+      <p>3. Consolidate outcomes into resources to reuse knowledge later.</p>
+    </section>
+  </main>
+</MainLayout>

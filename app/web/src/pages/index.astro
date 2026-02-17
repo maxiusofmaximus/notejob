@@ -1,0 +1,114 @@
+---
+import MainLayout from "../layouts/MainLayout.astro";
+---
+<MainLayout
+  title="NoteJob · From Ideas to Finished Work"
+  description="Capture ideas, plan tasks, finish projects, and turn results into reusable knowledge."
+  page="landing"
+>
+  <header class="site-header">
+    <div class="app-shell site-header__inner">
+      <a class="brand" href="/">
+        <img src="/brand/notejob-logo.svg" alt="NoteJob logo" class="brand__logo" />
+        <div>
+          <p class="brand__title">NoteJob</p>
+          <p class="brand__sub" id="brandTagline" data-i18n="tagline">From quick ideas to finished outcomes.</p>
+        </div>
+      </a>
+      <div class="header-actions">
+        <a class="btn btn--ghost" href="/docs">Docs</a>
+        <a class="btn btn--ghost" href="#contact" data-i18n="contact">Contact</a>
+        <a class="btn btn--ghost" href="/app" data-i18n="login">Login</a>
+        <a class="btn btn--primary" href="/app?auth=signup" data-i18n="signup">Signup</a>
+      </div>
+    </div>
+  </header>
+
+  <main class="app-shell landing-main">
+    <section class="hero" data-section-id="hero">
+      <article class="panel hero-copy landing-animate" id="heroSection">
+        <span class="kicker" data-i18n="kicker">Personal Work Hub</span>
+        <h1 id="heroTitle" data-i18n="hero_title">Capture what matters today. Finish what matters next.</h1>
+        <p id="heroText" data-i18n="hero_text">
+          NoteJob helps you collect ideas, organize tasks, and move projects forward without losing context.
+          Every completed task can become a clean learning note you can reuse later.
+        </p>
+        <div class="hero-tags">
+          <span data-i18n="tag_1">Daily tasks</span>
+          <span data-i18n="tag_2">Project planning</span>
+          <span data-i18n="tag_3">Knowledge notes</span>
+          <span data-i18n="tag_4">Deadlines</span>
+          <span data-i18n="tag_5">Team-ready exports</span>
+        </div>
+        <div class="hero-ctas">
+          <a class="btn btn--primary" id="heroCtaLabel" href="/app?auth=signup" data-i18n="start_now">Create your workspace</a>
+          <a class="btn" href="/app" data-i18n="explore_dashboard">See product demo</a>
+        </div>
+      </article>
+      <aside class="panel hero-side landing-animate">
+        <div class="overview-card">
+          <h3 data-i18n="overview">What you get</h3>
+          <p data-i18n="overview_text">A calm, dark workspace to plan tasks, track progress, and keep decisions documented.</p>
+        </div>
+        <div class="overview-card">
+          <h3 data-i18n="smart_locale">Work with dates</h3>
+          <p data-i18n="smart_locale_text">Set start and due dates, monitor deadlines, and keep your weekly priorities clear.</p>
+        </div>
+        <div class="overview-card">
+          <h3 data-i18n="ready_for_scale">Build your library</h3>
+          <p data-i18n="ready_for_scale_text">Convert finished work into reusable notes, guides, and references for future projects.</p>
+        </div>
+      </aside>
+    </section>
+
+    <section class="section-grid" data-section-id="workflow">
+      <article class="feature-card landing-animate">
+        <h3 data-i18n="feature_1_title">1. Capture</h3>
+        <p data-i18n="feature_1_text">Add ideas from your day, links, notes, and files so nothing valuable gets lost.</p>
+      </article>
+      <article class="feature-card landing-animate">
+        <h3 data-i18n="feature_2_title">2. Execute</h3>
+        <p data-i18n="feature_2_text">Turn ideas into tasks and projects, split into subtasks, and move work through clear statuses.</p>
+      </article>
+      <article class="feature-card landing-animate">
+        <h3 data-i18n="feature_3_title">3. Reuse</h3>
+        <p data-i18n="feature_3_text">Publish completed work as clean resources you can edit, share, and export.</p>
+      </article>
+    </section>
+
+    <section class="section-grid" data-section-id="audience">
+      <article class="feature-card landing-animate">
+        <h3 data-i18n="for_title_1">For solo builders</h3>
+        <p data-i18n="for_text_1">Keep game, app, and learning ideas in one place without using five different tools.</p>
+      </article>
+      <article class="feature-card landing-animate">
+        <h3 data-i18n="for_title_2">For creators & researchers</h3>
+        <p data-i18n="for_text_2">Store references, summarize discoveries, and keep your process visible from idea to output.</p>
+      </article>
+      <article class="feature-card landing-animate">
+        <h3 data-i18n="for_title_3">For small teams</h3>
+        <p data-i18n="for_text_3">Share the latest plan, avoid duplicated effort, and keep a living documentation trail.</p>
+      </article>
+    </section>
+
+    <section class="contact" id="contact" data-section-id="contact">
+      <article class="contact-item">
+        <h3 data-i18n="contact_title">Contact</h3>
+        <p>
+          <a href="mailto:pedroabelardo1999@hotmail.es">pedroabelardo1999@hotmail.es</a><br />
+          <a href="https://wa.me/573006123784" target="_blank" rel="noreferrer">WhatsApp: +57 300 612 3784</a>
+        </p>
+      </article>
+      <article class="contact-item">
+        <h3 data-i18n="product_title">Product overview</h3>
+        <p data-i18n="product_text">Task manager, project board, and knowledge vault in one product-first workflow.</p>
+      </article>
+    </section>
+
+    <p class="footer-note">NoteJob · Built with Astro + Bun + Sass + GSAP + anime.js</p>
+  </main>
+
+  <script>
+    import "../scripts/landing.ts";
+  </script>
+</MainLayout>
