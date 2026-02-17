@@ -123,11 +123,16 @@ Request body:
   "prompt": "Plan my week for Unity and Unreal learning",
   "model": "gpt-4o-mini",
   "baseUrl": "https://api.openai.com/v1",
-  "apiKey": "optional-override-key"
+  "apiKey": "optional-user-key",
+  "email": "user@example.com"
 }
 ```
 
-Only `prompt` is required. `model`, `baseUrl`, and `apiKey` are optional overrides.
+Only `prompt` is required.
+
+Modes:
+- `BYOK` mode: send `apiKey` (user key). No trial credit is consumed.
+- `Trial` mode: omit `apiKey`. Server uses shared trial key and consumes one credit from `email`.
 
 Success response (`200`):
 ```json
@@ -144,20 +149,85 @@ Success response (`200`):
       "totalSubtasks": 3,
       "resources": ["Unity", "ECS"]
     }
-  ]
+  ],
+  "trial": {
+    "creditsRemaining": 0,
+    "trialUsed": 1,
+    "updatedAt": "2026-02-17T17:30:00.000Z"
+  }
 }
 ```
 
 Error responses:
 - `400`: invalid JSON payload or missing `prompt`.
+- `400`: trial mode without `email`.
+- `402`: no trial credits remaining.
 - `502`: upstream provider error or invalid provider JSON response format.
 - `503`: no API key available on server/request.
 
 Configuration resolution order:
 - `baseUrl`: request `baseUrl` -> `NOTEJOB_AI_BASE_URL` -> `AI_BASE_URL` -> `PUBLIC_AI_BASE_URL` -> `https://api.openai.com/v1`
 - `model`: request `model` -> `NOTEJOB_AI_MODEL` -> `AI_MODEL` -> `PUBLIC_AI_MODEL` -> `gpt-4o-mini`
-- `apiKey`: request `apiKey` -> `NOTEJOB_AI_API_KEY` -> `AI_API_KEY` -> `OPENAI_API_KEY` -> `PUBLIC_AI_API_KEY`
+- `apiKey`: request `apiKey` -> `CEREBRAS_TRIAL_API_KEY` -> `NOTEJOB_AI_API_KEY` -> `AI_API_KEY` -> `OPENAI_API_KEY`
 
 Notes:
 - This endpoint is consumed by the web app chat planner and keeps provider orchestration on the server.
 - Response is normalized to a stable `tasks[]` structure before returning to the client.
+- Current trial credits store is in-memory (resets on server restart/redeploy). For production, move to persistent DB.
+
+## `GET /api/admin/ai-credits`
+Reads trial status for a user email (admin session required).
+
+Query params:
+- `email` (required)
+
+Success response (`200`):
+```json
+{
+  "email": "user@example.com",
+  "trial": {
+    "creditsRemaining": 1,
+    "trialUsed": 0,
+    "updatedAt": "2026-02-17T17:30:00.000Z"
+  }
+}
+```
+
+Error responses:
+- `400`: missing `email`.
+- `401`: unauthorized admin session.
+- `503`: admin auth missing on server.
+
+## `POST /api/admin/ai-credits`
+Mutates trial credits for a user email (admin session required).
+
+Request body:
+```json
+{
+  "email": "user@example.com",
+  "action": "reset"
+}
+```
+
+or
+
+```json
+{
+  "email": "user@example.com",
+  "action": "grant",
+  "amount": 10
+}
+```
+
+Success response (`200`):
+```json
+{
+  "ok": true,
+  "email": "user@example.com",
+  "trial": {
+    "creditsRemaining": 11,
+    "trialUsed": 0,
+    "updatedAt": "2026-02-17T17:30:00.000Z"
+  }
+}
+```

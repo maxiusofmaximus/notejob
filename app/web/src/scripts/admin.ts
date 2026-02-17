@@ -46,6 +46,11 @@ const tagline = document.getElementById("adminTagline") as HTMLInputElement;
 const heroTitle = document.getElementById("adminHeroTitle") as HTMLInputElement;
 const heroText = document.getElementById("adminHeroText") as HTMLTextAreaElement;
 const ctaLabel = document.getElementById("adminCtaLabel") as HTMLInputElement;
+const trialEmail = document.getElementById("adminTrialEmail") as HTMLInputElement;
+const trialCheckBtn = document.getElementById("adminTrialCheckBtn") as HTMLButtonElement;
+const trialResetBtn = document.getElementById("adminTrialResetBtn") as HTMLButtonElement;
+const trialGrant10Btn = document.getElementById("adminTrialGrant10Btn") as HTMLButtonElement;
+const trialStatus = document.getElementById("adminTrialStatus") as HTMLParagraphElement;
 
 function loadConfig(): SiteCustomConfig {
   try {
@@ -140,6 +145,58 @@ resetBtn.addEventListener("click", () => {
 logoutBtn.addEventListener("click", async () => {
   await fetch("/api/admin/logout", { method: "POST" });
   window.location.href = "/admin/login";
+});
+
+async function readTrialStatus(email: string) {
+  const res = await fetch(`/api/admin/ai-credits?email=${encodeURIComponent(email)}`);
+  const data = await res.json();
+  if (!res.ok) throw new Error(data?.error || "Could not read trial status.");
+  const trial = data?.trial;
+  if (!trial) {
+    trialStatus.textContent = `No state found for ${email}.`;
+    return;
+  }
+  trialStatus.textContent = `${email} -> remaining: ${trial.creditsRemaining}, used: ${trial.trialUsed}, updated: ${trial.updatedAt}`;
+}
+
+async function mutateTrial(action: "reset" | "grant", amount?: number) {
+  const email = trialEmail.value.trim().toLowerCase();
+  if (!email) {
+    trialStatus.textContent = "Enter user email first.";
+    return;
+  }
+  const res = await fetch("/api/admin/ai-credits", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ email, action, amount })
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data?.error || "Could not update trial credits.");
+  const trial = data?.trial;
+  trialStatus.textContent = `${email} -> remaining: ${trial.creditsRemaining}, used: ${trial.trialUsed}, updated: ${trial.updatedAt}`;
+}
+
+trialCheckBtn.addEventListener("click", () => {
+  const email = trialEmail.value.trim().toLowerCase();
+  if (!email) {
+    trialStatus.textContent = "Enter user email first.";
+    return;
+  }
+  readTrialStatus(email).catch((err) => {
+    trialStatus.textContent = err.message || "Could not read trial status.";
+  });
+});
+
+trialResetBtn.addEventListener("click", () => {
+  mutateTrial("reset").catch((err) => {
+    trialStatus.textContent = err.message || "Could not restore first try.";
+  });
+});
+
+trialGrant10Btn.addEventListener("click", () => {
+  mutateTrial("grant", 10).catch((err) => {
+    trialStatus.textContent = err.message || "Could not grant attempts.";
+  });
 });
 
 ensureSession().catch(() => {

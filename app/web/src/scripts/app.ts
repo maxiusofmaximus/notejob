@@ -445,6 +445,8 @@ function saveItem() {
 }
 
 async function aiPlan(prompt: string) {
+  const email = firebaseAuth?.currentUser?.email || "";
+  const usingOwnKey = Boolean((settings.aiApiKey || runtimeDefaults.aiApiKey || "").trim());
   const response = await fetch("/api/ai/plan", {
     method: "POST",
     headers: {
@@ -454,7 +456,8 @@ async function aiPlan(prompt: string) {
       prompt,
       model: settings.aiModel || runtimeDefaults.aiModel,
       baseUrl: settings.aiBaseUrl || runtimeDefaults.aiBaseUrl,
-      apiKey: settings.aiApiKey || runtimeDefaults.aiApiKey
+      apiKey: settings.aiApiKey || runtimeDefaults.aiApiKey,
+      email
     })
   });
 
@@ -483,6 +486,11 @@ async function aiPlan(prompt: string) {
 
   renderItems();
   renderSummary();
+
+  if (!usingOwnKey && data?.trial) {
+    const remaining = Number(data.trial.creditsRemaining || 0);
+    alert(`Trial mode used. Remaining shared attempts: ${remaining}`);
+  }
 }
 
 function toBase64(bytes: Uint8Array) {

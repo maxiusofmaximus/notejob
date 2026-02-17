@@ -1,10 +1,12 @@
 import type { APIRoute } from "astro";
+import { consumeTrialCredit, getTrialState } from "../../../lib/ai-trial";
 
 type AiPlanRequest = {
   prompt?: string;
   model?: string;
   baseUrl?: string;
   apiKey?: string;
+  email?: string;
 };
 
 type PlannedTask = {
@@ -68,16 +70,38 @@ export const POST: APIRoute = async ({ request }) => {
     "https://api.openai.com/v1"
   ).replace(/\/$/, "");
   const model = pick(body.model, process.env.NOTEJOB_AI_MODEL, process.env.AI_MODEL, process.env.PUBLIC_AI_MODEL, "gpt-4o-mini");
+  const userApiKey = pick(body.apiKey);
+  const fallbackTrialApiKey = pick(process.env.CEREBRAS_TRIAL_API_KEY, process.env.NOTEJOB_AI_API_KEY, process.env.AI_API_KEY, process.env.OPENAI_API_KEY);
   const apiKey = pick(
-    body.apiKey,
-    process.env.NOTEJOB_AI_API_KEY,
-    process.env.AI_API_KEY,
-    process.env.OPENAI_API_KEY,
-    process.env.PUBLIC_AI_API_KEY
+    userApiKey,
+    fallbackTrialApiKey
   );
 
   if (!apiKey) {
     return new Response(JSON.stringify({ error: "AI API key is missing on server." }), { status: 503 });
+  }
+
+  // BYOK priority: if user sends their own key, no trial credit is consumed.
+  // Trial mode: if no user key, consume one trial credit from shared-key pool.
+  let trialState = null;
+  if (!userApiKey) {
+    const email = (body.email || "").trim().toLowerCase();
+    if (!email) {
+      return new Response(JSON.stringify({ error: "Email is required to use trial mode." }), { status: 400 });
+    }
+    const consume = consumeTrialCredit(email);
+    if (!consume.ok) {
+      return new Response(
+        JSON.stringify({
+          error: "No trial credits remaining. Add your own API key in Settings or contact admin.",
+          trial: consume.state
+        }),
+        { status: 402 }
+      );
+    }
+    trialState = consume.state;
+  } else if (body.email) {
+    trialState = getTrialState(body.email) || null;
   }
 
   const providerRes = await fetch(`${baseUrl}/chat/completions`, {
@@ -126,7 +150,7 @@ export const POST: APIRoute = async ({ request }) => {
   }
 
   const tasks = Array.isArray(parsed.tasks) ? parsed.tasks.map(normalizeTask) : [];
-  return new Response(JSON.stringify({ tasks }), {
+  return new Response(JSON.stringify({ tasks, trial: trialState }), {
     status: 200,
     headers: { "content-type": "application/json; charset=utf-8" }
   });

@@ -41,6 +41,25 @@ import MainLayout from "../../layouts/MainLayout.astro";
       </article>
     </section>
 
+    <section class="section-grid" style="grid-template-columns: 1fr;">
+      <article class="feature-card">
+        <h3 style="margin-bottom:0.6rem;">AI trial credits</h3>
+        <p class="muted">Shared-key trial policy: default 1 attempt per user. Admin can restore or grant bonus attempts.</p>
+        <div class="row" style="gap:0.6rem;flex-wrap:wrap;">
+          <label class="form-field" style="flex:1;min-width:260px;">
+            User email
+            <input id="adminTrialEmail" type="email" placeholder="user@example.com" />
+          </label>
+        </div>
+        <div class="row" style="margin-top:0.7rem;gap:0.6rem;flex-wrap:wrap;">
+          <button id="adminTrialCheckBtn" class="btn" type="button">Check status</button>
+          <button id="adminTrialResetBtn" class="btn btn--ghost" type="button">Restore first try</button>
+          <button id="adminTrialGrant10Btn" class="btn btn--primary" type="button">Grant +10 attempts</button>
+        </div>
+        <p id="adminTrialStatus" class="footer-note">No trial action yet.</p>
+      </article>
+    </section>
+
     <p id="adminStatus" class="footer-note">No changes yet.</p>
   </main>
 
