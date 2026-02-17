@@ -5,3 +5,6 @@ dist/
 /.vercel
 app/web/.astro/
 app/web/.vercel/
+app/web/tmp-dev.log
+app/web/responsive-*.png
+supabase/.temp/
