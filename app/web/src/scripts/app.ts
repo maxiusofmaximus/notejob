@@ -1,5 +1,6 @@
 import anime from "animejs/lib/anime.es.js";
 import { gsap } from "gsap";
+import { notifyError, notifyInfo, notifySuccess, notifyWarning } from "./ui-alert";
 
 type Locale = "en" | "es";
 type SiteCustomConfig = {
@@ -160,6 +161,7 @@ const dom = {
   authPassword: getById("authPassword") as HTMLInputElement,
   submitSignupBtn: getById("submitSignupBtn"),
   submitLoginBtn: getById("submitLoginBtn"),
+  forgotPasswordBtn: getById("forgotPasswordBtn"),
   closeAuthModalBtn: getById("closeAuthModalBtn"),
   creatorModal: getById("creatorModal") as HTMLDialogElement,
   creatorTitle: getById("creatorTitle"),
@@ -424,7 +426,7 @@ async function doAuth(mode: "signup" | "login") {
       const cred = await authMod.createUserWithEmailAndPassword(auth, email, password);
       const redirect = `${window.location.origin}/confirm-email`;
       await authMod.sendEmailVerification(cred.user, { url: redirect });
-      alert(`Account created in ${APP_NAME}. Verification email sent.`);
+      await notifySuccess("Account created", `Verification email sent from ${APP_NAME}.`);
     } else {
       await authMod.signInWithEmailAndPassword(auth, email, password);
       if (auth.currentUser && !auth.currentUser.emailVerified) {
@@ -448,6 +450,17 @@ async function doAuth(mode: "signup" | "login") {
     }
     throw err;
   }
+}
+
+async function sendPasswordReset() {
+  const email = dom.authEmail.value.trim();
+  if (!email) {
+    await notifyWarning("Email required", "Enter your email to receive a reset link.");
+    return;
+  }
+  const { authMod, auth } = await ensureFirebaseAuth();
+  await authMod.sendPasswordResetEmail(auth, email);
+  await notifySuccess("Reset email sent", "Check your inbox and spam folder.");
 }
 
 async function signOut() {
@@ -592,7 +605,7 @@ async function aiPlan(prompt: string) {
   const provider = typeof data?.provider === "string" ? data.provider : "";
   const trialRemaining = Number(data?.trial?.creditsRemaining || 0);
   if (!usingOwnKey && data?.trial) {
-    alert(`Trial mode used. Remaining shared attempts: ${trialRemaining}`);
+    await notifyInfo("Trial mode used", `Remaining shared attempts: ${trialRemaining}`);
   }
 
   return {
@@ -702,7 +715,7 @@ function renderVault() {
       if (!entry) return;
       const passphrase = vaultPassphraseCache || dom.vaultPassphrase.value;
       if (!passphrase) {
-        alert("Enter your vault passphrase first.");
+        await notifyWarning("Passphrase required", "Enter your vault passphrase first.");
         return;
       }
       try {
@@ -711,7 +724,7 @@ function renderVault() {
         if (target) target.textContent = secret;
         vaultPassphraseCache = passphrase;
       } catch {
-        alert("Could not decrypt. Check your passphrase.");
+        await notifyError("Decrypt failed", "Check your passphrase.");
       }
     });
   });
@@ -723,15 +736,15 @@ function renderVault() {
       if (!entry) return;
       const passphrase = vaultPassphraseCache || dom.vaultPassphrase.value;
       if (!passphrase) {
-        alert("Enter your vault passphrase first.");
+        await notifyWarning("Passphrase required", "Enter your vault passphrase first.");
         return;
       }
       try {
         const secret = await decryptVaultSecret(entry, passphrase);
         await navigator.clipboard.writeText(secret);
-        alert("Copied to clipboard.");
+        await notifySuccess("Copied", "Secret copied to clipboard.");
       } catch {
-        alert("Could not decrypt. Check your passphrase.");
+        await notifyError("Decrypt failed", "Check your passphrase.");
       }
     });
   });
@@ -746,7 +759,7 @@ async function saveVaultEntry() {
   const label = dom.vaultLabel.value.trim();
   const secret = dom.vaultSecret.value.trim();
   if (!passphrase || !label || !secret) {
-    alert("Passphrase, label, and secret are required.");
+    await notifyWarning("Missing fields", "Passphrase, label, and secret are required.");
     return;
   }
 
@@ -789,16 +802,17 @@ function bindEvents() {
   dom.guestSignupBtn.addEventListener("click", () => openAuth("signup"));
   dom.guestLoginBtn.addEventListener("click", () => openAuth("login"));
   dom.closeAuthModalBtn.addEventListener("click", () => dom.authModal.close());
-  dom.submitSignupBtn.addEventListener("click", () => doAuth("signup").catch((err) => alert(err.message)));
-  dom.submitLoginBtn.addEventListener("click", () => doAuth("login").catch((err) => alert(err.message)));
-  dom.signOutBtn.addEventListener("click", () => signOut().catch((err) => alert(err.message)));
+  dom.submitSignupBtn.addEventListener("click", () => doAuth("signup").catch((err) => notifyError("Sign up failed", err.message)));
+  dom.submitLoginBtn.addEventListener("click", () => doAuth("login").catch((err) => notifyError("Login failed", err.message)));
+  dom.forgotPasswordBtn.addEventListener("click", () => sendPasswordReset().catch((err) => notifyError("Reset failed", err.message)));
+  dom.signOutBtn.addEventListener("click", () => signOut().catch((err) => notifyError("Logout failed", err.message)));
   dom.newTaskBtn.addEventListener("click", () => (firebaseAuth?.currentUser ? openCreator("task") : openAuth("login")));
   dom.newProjectBtn.addEventListener("click", () => (firebaseAuth?.currentUser ? openCreator("project") : openAuth("login")));
   dom.closeCreatorBtn.addEventListener("click", () => dom.creatorModal.close());
   dom.saveItemBtn.addEventListener("click", saveItem);
   dom.chatSendBtn.addEventListener("click", async () => {
     if (!firebaseAuth?.currentUser) {
-      alert("Login is required to use AI planner.");
+      await notifyWarning("Login required", "Login is required to use AI planner.");
       openAuth("login");
       return;
     }
@@ -815,23 +829,23 @@ function bindEvents() {
       setAiPlanPreview(result?.tasks || []);
     } catch (err: any) {
       setAiStatus(`${i18n[locale].ai_error || "Could not generate plan"}: ${err.message || "Unknown error"}`, "error");
-      alert(err.message || "Could not generate tasks.");
+      await notifyError("AI planner failed", err.message || "Could not generate tasks.");
     } finally {
       dom.chatSendBtn.removeAttribute("disabled");
     }
   });
 
   dom.vaultSaveBtn.addEventListener("click", () => {
-    saveVaultEntry().catch(() => alert("Could not encrypt vault entry."));
+    saveVaultEntry().catch(() => notifyError("Vault save failed", "Could not encrypt vault entry."));
   });
-  dom.vaultUnlockBtn.addEventListener("click", () => {
+  dom.vaultUnlockBtn.addEventListener("click", async () => {
     const pass = dom.vaultPassphrase.value.trim();
     if (!pass) {
-      alert("Enter your passphrase.");
+      await notifyWarning("Passphrase required", "Enter your passphrase.");
       return;
     }
     vaultPassphraseCache = pass;
-    alert("Vault unlocked for this session.");
+    await notifySuccess("Vault unlocked", "Vault unlocked for this session.");
   });
 }
 

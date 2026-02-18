@@ -1,5 +1,6 @@
 import anime from "animejs/lib/anime.es.js";
 import { gsap } from "gsap";
+import { notifyError, notifySuccess, notifyWarning } from "./ui-alert";
 
 type Locale = "en" | "es";
 type SiteCustomConfig = {
@@ -186,6 +187,7 @@ const dom = {
   landingAuthPassword: getById<HTMLInputElement>("landingAuthPassword"),
   landingSubmitSignupBtn: getById<HTMLButtonElement>("landingSubmitSignupBtn"),
   landingSubmitLoginBtn: getById<HTMLButtonElement>("landingSubmitLoginBtn"),
+  landingForgotPasswordBtn: getById<HTMLButtonElement>("landingForgotPasswordBtn"),
   landingCloseAuthBtn: getById<HTMLButtonElement>("landingCloseAuthBtn")
 };
 
@@ -277,6 +279,17 @@ async function submitAuth(mode: "signup" | "login") {
   }
 }
 
+async function sendLandingPasswordReset() {
+  const email = dom.landingAuthEmail.value.trim();
+  if (!email) {
+    await notifyWarning("Email required", "Enter your email to receive a reset link.");
+    return;
+  }
+  const { auth, authMod } = await ensureFirebaseAuth();
+  await authMod.sendPasswordResetEmail(auth, email);
+  await notifySuccess("Reset email sent", "Check your inbox and spam folder.");
+}
+
 function bindAuthEvents() {
   dom.landingSignupBtn.addEventListener("click", () => openAuth("signup"));
   dom.landingLoginBtn.addEventListener("click", () => openAuth("login"));
@@ -284,10 +297,25 @@ function bindAuthEvents() {
   dom.heroLoginBtn.addEventListener("click", () => openAuth("login"));
   dom.landingCloseAuthBtn.addEventListener("click", () => dom.landingAuthModal.close());
   dom.landingSubmitSignupBtn.addEventListener("click", () => {
-    submitAuth("signup").catch((err: any) => setAuthMessage(err.message || "Could not create account."));
+    submitAuth("signup").catch((err: any) => {
+      const msg = err.message || "Could not create account.";
+      setAuthMessage(msg);
+      notifyError("Sign up failed", msg);
+    });
   });
   dom.landingSubmitLoginBtn.addEventListener("click", () => {
-    submitAuth("login").catch((err: any) => setAuthMessage(err.message || "Could not login."));
+    submitAuth("login").catch((err: any) => {
+      const msg = err.message || "Could not login.";
+      setAuthMessage(msg);
+      notifyError("Login failed", msg);
+    });
+  });
+  dom.landingForgotPasswordBtn.addEventListener("click", () => {
+    sendLandingPasswordReset().catch((err: any) => {
+      const msg = err.message || "Could not send reset email.";
+      setAuthMessage(msg);
+      notifyError("Reset failed", msg);
+    });
   });
 
   const params = new URLSearchParams(window.location.search);
