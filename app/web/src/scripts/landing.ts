@@ -8,11 +8,12 @@ type SiteCustomConfig = {
   layoutOrder?: string[];
 };
 const customKey = "notejob.site.custom.v1";
+const cleanFirebaseValue = (value: string | undefined) => String(value || "").replace(/\uFEFF/g, "").trim();
 const runtimeDefaults = {
-  firebaseApiKey: import.meta.env.PUBLIC_FIREBASE_API_KEY || "",
-  firebaseAuthDomain: import.meta.env.PUBLIC_FIREBASE_AUTH_DOMAIN || "",
-  firebaseProjectId: import.meta.env.PUBLIC_FIREBASE_PROJECT_ID || "",
-  firebaseAppId: import.meta.env.PUBLIC_FIREBASE_APP_ID || ""
+  firebaseApiKey: cleanFirebaseValue(import.meta.env.PUBLIC_FIREBASE_API_KEY),
+  firebaseAuthDomain: cleanFirebaseValue(import.meta.env.PUBLIC_FIREBASE_AUTH_DOMAIN),
+  firebaseProjectId: cleanFirebaseValue(import.meta.env.PUBLIC_FIREBASE_PROJECT_ID),
+  firebaseAppId: cleanFirebaseValue(import.meta.env.PUBLIC_FIREBASE_APP_ID)
 };
 let firebaseAuth: any = null;
 let firebaseAuthMod: any = null;
@@ -240,23 +241,40 @@ async function submitAuth(mode: "signup" | "login") {
     return;
   }
 
-  const { auth, authMod } = await ensureFirebaseAuth();
-  if (mode === "signup") {
-    const cred = await authMod.createUserWithEmailAndPassword(auth, email, password);
-    const redirect = `${window.location.origin}/confirm-email`;
-    await authMod.sendEmailVerification(cred.user, { url: redirect });
-    await authMod.signOut(auth);
-    setAuthMessage("Account created. Check your email to confirm before logging in.");
-    return;
-  }
+  try {
+    const { auth, authMod } = await ensureFirebaseAuth();
+    if (mode === "signup") {
+      const cred = await authMod.createUserWithEmailAndPassword(auth, email, password);
+      const redirect = `${window.location.origin}/confirm-email`;
+      await authMod.sendEmailVerification(cred.user, { url: redirect });
+      await authMod.signOut(auth);
+      setAuthMessage("Account created. Check your email to confirm before logging in.");
+      return;
+    }
 
-  await authMod.signInWithEmailAndPassword(auth, email, password);
-  if (auth.currentUser && !auth.currentUser.emailVerified) {
-    await authMod.sendEmailVerification(auth.currentUser, { url: `${window.location.origin}/confirm-email` });
-    await authMod.signOut(auth);
-    throw new Error("Email not confirmed yet. We sent a new confirmation link.");
+    await authMod.signInWithEmailAndPassword(auth, email, password);
+    if (auth.currentUser && !auth.currentUser.emailVerified) {
+      await authMod.sendEmailVerification(auth.currentUser, { url: `${window.location.origin}/confirm-email` });
+      await authMod.signOut(auth);
+      throw new Error("Email not confirmed yet. We sent a new confirmation link.");
+    }
+    window.location.href = "/app";
+  } catch (err: any) {
+    const code = String(err?.code || err?.message || "");
+    if (code.includes("auth/invalid-credential") || code.includes("auth/invalid-login-credentials")) {
+      throw new Error("Invalid email or password.");
+    }
+    if (code.includes("auth/user-not-found") || code.includes("auth/wrong-password")) {
+      throw new Error("Invalid email or password.");
+    }
+    if (code.includes("auth/too-many-requests")) {
+      throw new Error("Too many failed attempts. Try again later.");
+    }
+    if (code.includes("auth/network-request-failed")) {
+      throw new Error("Authentication request failed. Verify Firebase API key restrictions and authorized domains.");
+    }
+    throw err;
   }
-  window.location.href = "/app";
 }
 
 function bindAuthEvents() {

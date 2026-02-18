@@ -28,6 +28,12 @@ import MainLayout from "../layouts/MainLayout.astro";
     <aside class="sidebar">
       <h2 data-i18n="account">Account</h2>
       <p class="muted" id="accountEmail">Not authenticated</p>
+      <div class="account-meta">
+        <p class="status-line">UID: <span id="accountUid">-</span></p>
+        <p class="status-line">Email verified: <span id="accountVerified">No</span></p>
+        <p class="status-line">Provider: <span id="accountProvider">-</span></p>
+        <p class="status-line">Last sign-in: <span id="accountLastSignIn">-</span></p>
+      </div>
       <div>
         <p class="muted" data-i18n="system_health">System status</p>
         <div class="chip-row" id="mcpStatus"></div>

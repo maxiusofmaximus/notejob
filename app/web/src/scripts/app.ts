@@ -31,15 +31,16 @@ const settingsKey = "notejob.user.settings.v2";
 const siteCustomKey = "notejob.site.custom.v1";
 const vaultKeyBase = "notejob.vault.entries.v1";
 const itemsKeyBase = "notejob.items.v1";
+const cleanFirebaseValue = (value: string | undefined) => String(value || "").replace(/\uFEFF/g, "").trim();
 
 const runtimeDefaults = {
   aiBaseUrl: import.meta.env.PUBLIC_AI_BASE_URL || "https://api.openai.com/v1",
   aiModel: import.meta.env.PUBLIC_AI_MODEL || "gpt-4o-mini",
   aiApiKey: import.meta.env.PUBLIC_AI_API_KEY || "",
-  firebaseApiKey: import.meta.env.PUBLIC_FIREBASE_API_KEY || "",
-  firebaseAuthDomain: import.meta.env.PUBLIC_FIREBASE_AUTH_DOMAIN || "",
-  firebaseProjectId: import.meta.env.PUBLIC_FIREBASE_PROJECT_ID || "",
-  firebaseAppId: import.meta.env.PUBLIC_FIREBASE_APP_ID || ""
+  firebaseApiKey: cleanFirebaseValue(import.meta.env.PUBLIC_FIREBASE_API_KEY),
+  firebaseAuthDomain: cleanFirebaseValue(import.meta.env.PUBLIC_FIREBASE_AUTH_DOMAIN),
+  firebaseProjectId: cleanFirebaseValue(import.meta.env.PUBLIC_FIREBASE_PROJECT_ID),
+  firebaseAppId: cleanFirebaseValue(import.meta.env.PUBLIC_FIREBASE_APP_ID)
 };
 
 const defaultSettings: Settings = {
@@ -124,6 +125,10 @@ let vaultEntries: VaultEntry[] = [];
 
 const dom = {
   accountEmail: getById("accountEmail"),
+  accountUid: getById("accountUid"),
+  accountVerified: getById("accountVerified"),
+  accountProvider: getById("accountProvider"),
+  accountLastSignIn: getById("accountLastSignIn"),
   mcpStatus: getById("mcpStatus"),
   localeLine: getById("localeLine"),
   itemsGrid: getById("itemsGrid"),
@@ -289,6 +294,25 @@ function renderWorkspaceVisibility() {
   (dom.workspacePrivateView as HTMLElement).hidden = !authenticated;
 }
 
+function renderAccountIdentity(user: any | null) {
+  if (!user) {
+    dom.accountEmail.textContent = "Not authenticated";
+    dom.accountUid.textContent = "-";
+    dom.accountVerified.textContent = "No";
+    dom.accountProvider.textContent = "-";
+    dom.accountLastSignIn.textContent = "-";
+    return;
+  }
+
+  const providers = Array.isArray(user.providerData) ? user.providerData.map((p: any) => p?.providerId).filter(Boolean) : [];
+  const providerLabel = providers.length ? providers.join(", ") : "password";
+  dom.accountEmail.textContent = user.email || "No email";
+  dom.accountUid.textContent = user.uid || "-";
+  dom.accountVerified.textContent = user.emailVerified ? "Yes" : "No";
+  dom.accountProvider.textContent = providerLabel;
+  dom.accountLastSignIn.textContent = user.metadata?.lastSignInTime || "-";
+}
+
 function toDateLabel(item: any) {
   return `${item.startDate || "n/a"} -> ${item.dueDate || "n/a"} · ${item.doneSubtasks}/${item.totalSubtasks}`;
 }
@@ -378,7 +402,7 @@ async function ensureFirebaseAuth() {
   firebaseAuth = authMod.getAuth(app);
   authMod.onAuthStateChanged(firebaseAuth, (user: any) => {
     currentUserId = user?.uid || "guest";
-    dom.accountEmail.textContent = user?.email || "Not authenticated";
+    renderAccountIdentity(user || null);
     items = loadItems();
     vaultEntries = loadVaultEntries();
     renderWorkspaceVisibility();
@@ -410,6 +434,15 @@ async function doAuth(mode: "signup" | "login") {
     dom.authModal.close();
   } catch (err: any) {
     const code = String(err?.code || err?.message || "");
+    if (code.includes("auth/invalid-credential") || code.includes("auth/invalid-login-credentials")) {
+      throw new Error("Invalid email or password.");
+    }
+    if (code.includes("auth/user-not-found") || code.includes("auth/wrong-password")) {
+      throw new Error("Invalid email or password.");
+    }
+    if (code.includes("auth/too-many-requests")) {
+      throw new Error("Too many failed attempts. Try again later.");
+    }
     if (code.includes("auth/network-request-failed")) {
       throw new Error("Authentication request failed. Verify Firebase API key restrictions and authorized domains.");
     }
@@ -421,6 +454,7 @@ async function signOut() {
   if (!firebaseAuth) return;
   const authApi = firebaseAuthMod || await import("https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js");
   await authApi.signOut(firebaseAuth);
+  renderAccountIdentity(null);
 }
 
 function fillSettingsForm() {
@@ -832,6 +866,10 @@ async function boot() {
   if (runtimeDefaults.firebaseApiKey && runtimeDefaults.firebaseAuthDomain && runtimeDefaults.firebaseProjectId && runtimeDefaults.firebaseAppId) {
     ensureFirebaseAuth().catch(() => {
       dom.accountEmail.textContent = "Authentication unavailable";
+      dom.accountUid.textContent = "-";
+      dom.accountVerified.textContent = "No";
+      dom.accountProvider.textContent = "-";
+      dom.accountLastSignIn.textContent = "-";
     });
   }
 
