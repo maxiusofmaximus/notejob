@@ -27,6 +27,12 @@ type PlannedTask = {
   resources: string[];
 };
 
+function dateOffset(days: number) {
+  const d = new Date();
+  d.setDate(d.getDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
 function pick(...values: Array<string | undefined>) {
   for (const value of values) {
     const trimmed = value?.trim();
@@ -53,6 +59,72 @@ function normalizeTask(raw: any): PlannedTask {
     totalSubtasks: Math.max(1, Number(raw?.totalSubtasks || 1)),
     resources
   };
+}
+
+function extractJsonBlock(content: string) {
+  const trimmed = content.trim();
+  if (trimmed.startsWith("{") && trimmed.endsWith("}")) return trimmed;
+  const fenced = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  if (fenced?.[1]) return fenced[1].trim();
+  const first = trimmed.indexOf("{");
+  const last = trimmed.lastIndexOf("}");
+  if (first >= 0 && last > first) return trimmed.slice(first, last + 1);
+  return "";
+}
+
+function extractTasks(parsed: any, content: string, prompt: string) {
+  const candidates = [
+    parsed?.tasks,
+    parsed?.items,
+    parsed?.plan?.tasks,
+    parsed?.result?.tasks,
+    parsed?.data?.tasks,
+    parsed?.backlog
+  ];
+
+  for (const candidate of candidates) {
+    if (Array.isArray(candidate) && candidate.length) {
+      return candidate.map(normalizeTask);
+    }
+  }
+
+  const checklist = content
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => /^[-*]\s+(\[[ xX]\]\s+)?/.test(line))
+    .slice(0, 8)
+    .map((line, index) =>
+      normalizeTask({
+        title: line.replace(/^[-*]\s+(\[[ xX]\]\s+)?/, "").slice(0, 120),
+        summary: "Generated from AI plan text.",
+        kind: index === 0 ? "project" : "task",
+        status: "inbox",
+        startDate: dateOffset(0),
+        dueDate: dateOffset(7 + index * 3),
+        doneSubtasks: 0,
+        totalSubtasks: 1,
+        resources: ["AI"]
+      })
+    );
+  if (checklist.length) return checklist;
+
+  const titleSeed = prompt
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 80);
+  return [
+    normalizeTask({
+      title: titleSeed || "AI generated project",
+      summary: "Fallback task created because the model did not return structured tasks.",
+      kind: "project",
+      status: "inbox",
+      startDate: dateOffset(0),
+      dueDate: dateOffset(14),
+      doneSubtasks: 0,
+      totalSubtasks: 3,
+      resources: ["AI", "Fallback"]
+    })
+  ];
 }
 
 export const POST: APIRoute = async ({ request }) => {
@@ -170,14 +242,17 @@ export const POST: APIRoute = async ({ request }) => {
     );
   }
 
-  let parsed: { tasks?: unknown[] } = {};
+  let parsed: any = {};
   try {
-    parsed = JSON.parse(content);
+    const jsonBlock = extractJsonBlock(content);
+    if (jsonBlock) {
+      parsed = JSON.parse(jsonBlock);
+    }
   } catch {
-    return new Response(JSON.stringify({ error: "AI provider returned invalid JSON content." }), { status: 502 });
+    parsed = {};
   }
 
-  const tasks = Array.isArray(parsed.tasks) ? parsed.tasks.map(normalizeTask) : [];
+  const tasks = extractTasks(parsed, content, prompt);
   return new Response(JSON.stringify({ tasks, trial: trialState, provider: providerUsed }), {
     status: 200,
     headers: { "content-type": "application/json; charset=utf-8" }

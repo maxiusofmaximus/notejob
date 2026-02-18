@@ -61,6 +61,10 @@ import MainLayout from "../layouts/MainLayout.astro";
         <h2 data-i18n="ai_planner">AI Planner</h2>
         <p class="muted" data-i18n="ai_hint">Ask for a weekly plan, project breakdown, or next-step checklist.</p>
         <div class="form-field">
+          <label for="trialEmail">Email for trial mode (optional)</label>
+          <input id="trialEmail" type="email" autocomplete="email" placeholder="you@example.com" />
+        </div>
+        <div class="form-field">
           <textarea id="chatInput" rows="3" placeholder="Plan tasks from 2026-03-01 to 2026-03-20 for Unreal prototype"></textarea>
         </div>
         <div class="row">

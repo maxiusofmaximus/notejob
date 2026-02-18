@@ -171,6 +171,7 @@ const dom = {
   sumOverdue: getById("sumOverdue"),
   lastActivity: getById("lastActivity"),
   chatInput: getById("chatInput") as HTMLTextAreaElement,
+  trialEmail: getById("trialEmail") as HTMLInputElement,
   chatSendBtn: getById("chatSendBtn"),
   aiOutputStatus: getById("aiOutputStatus"),
   aiOutputList: getById("aiOutputList"),
@@ -485,7 +486,7 @@ function setAiPlanPreview(tasks: Array<{ title: string; dueDate: string; kind: s
 }
 
 async function aiPlan(prompt: string) {
-  const email = firebaseAuth?.currentUser?.email || "";
+  const email = firebaseAuth?.currentUser?.email || dom.trialEmail.value.trim();
   const usingOwnKey = Boolean((settings.aiApiKey || runtimeDefaults.aiApiKey || "").trim());
   const response = await fetch("/api/ai/plan", {
     method: "POST",
