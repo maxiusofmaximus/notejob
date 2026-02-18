@@ -375,19 +375,27 @@ async function doAuth(mode: "signup" | "login") {
   const password = dom.authPassword.value;
   if (!email || !password) return;
 
-  const { authMod, auth } = await ensureFirebaseAuth();
-  if (mode === "signup") {
-    const cred = await authMod.createUserWithEmailAndPassword(auth, email, password);
-    const redirect = `${window.location.origin}/confirm-email`;
-    await authMod.sendEmailVerification(cred.user, { url: redirect });
-    alert(`Account created in ${APP_NAME}. Verification email sent.`);
-  } else {
-    await authMod.signInWithEmailAndPassword(auth, email, password);
-    if (auth.currentUser && !auth.currentUser.emailVerified) {
-      throw new Error("Email not confirmed yet.");
+  try {
+    const { authMod, auth } = await ensureFirebaseAuth();
+    if (mode === "signup") {
+      const cred = await authMod.createUserWithEmailAndPassword(auth, email, password);
+      const redirect = `${window.location.origin}/confirm-email`;
+      await authMod.sendEmailVerification(cred.user, { url: redirect });
+      alert(`Account created in ${APP_NAME}. Verification email sent.`);
+    } else {
+      await authMod.signInWithEmailAndPassword(auth, email, password);
+      if (auth.currentUser && !auth.currentUser.emailVerified) {
+        throw new Error("Email not confirmed yet.");
+      }
     }
+    dom.authModal.close();
+  } catch (err: any) {
+    const code = String(err?.code || err?.message || "");
+    if (code.includes("auth/network-request-failed")) {
+      throw new Error("Authentication request failed. Verify Firebase API key restrictions and authorized domains.");
+    }
+    throw err;
   }
-  dom.authModal.close();
 }
 
 async function signOut() {
