@@ -66,6 +66,10 @@ import MainLayout from "../layouts/MainLayout.astro";
         <div class="row">
           <button class="btn btn--primary" id="chatSendBtn" type="button" data-i18n="send">Send</button>
         </div>
+        <div class="ai-output" id="aiOutput" aria-live="polite">
+          <p class="ai-output__status muted" id="aiOutputStatus">Ready to generate a plan.</p>
+          <ul class="ai-output__list" id="aiOutputList"></ul>
+        </div>
       </div>
 
       <div style="margin-top:1.25rem;">

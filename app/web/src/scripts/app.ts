@@ -71,7 +71,11 @@ const i18n: Record<Locale, Record<string, string>> = {
     overdue: "Overdue",
     ai_planner: "AI Planner",
     ai_hint: "Ask for a weekly plan, project breakdown, or next-step checklist.",
-    send: "Send"
+    send: "Send",
+    ai_ready: "Ready to generate a plan.",
+    ai_running: "Generating plan...",
+    ai_success: "Plan generated",
+    ai_error: "Could not generate plan"
   },
   es: {
     workspace_sub: "Panel de ejecución para tareas y conocimiento.",
@@ -92,7 +96,11 @@ const i18n: Record<Locale, Record<string, string>> = {
     overdue: "Vencidas",
     ai_planner: "Planificador IA",
     ai_hint: "Pide un plan semanal, un desglose de proyecto o una checklist de siguientes pasos.",
-    send: "Enviar"
+    send: "Enviar",
+    ai_ready: "Listo para generar un plan.",
+    ai_running: "Generando plan...",
+    ai_success: "Plan generado",
+    ai_error: "No se pudo generar el plan"
   }
 };
 
@@ -147,6 +155,7 @@ const systemChecks = [
 ];
 
 let firebaseAuth: any = null;
+let firebaseAuthMod: any = null;
 let locale: Locale = "en";
 let vaultPassphraseCache = "";
 let vaultEntries = loadVaultEntries();
@@ -163,6 +172,8 @@ const dom = {
   lastActivity: getById("lastActivity"),
   chatInput: getById("chatInput") as HTMLTextAreaElement,
   chatSendBtn: getById("chatSendBtn"),
+  aiOutputStatus: getById("aiOutputStatus"),
+  aiOutputList: getById("aiOutputList"),
   runMcpChecksBtn: getById("runMcpChecksBtn"),
   settingsFab: getById("settingsFab"),
   closeSettingsBtn: getById("closeSettingsBtn"),
@@ -336,7 +347,7 @@ function openAuth(mode: "signup" | "login") {
 }
 
 async function ensureFirebaseAuth() {
-  if (firebaseAuth) return firebaseAuth;
+  if (firebaseAuth && firebaseAuthMod) return { authMod: firebaseAuthMod, auth: firebaseAuth };
   if (!runtimeDefaults.firebaseApiKey || !runtimeDefaults.firebaseAuthDomain || !runtimeDefaults.firebaseProjectId || !runtimeDefaults.firebaseAppId) {
     throw new Error("Authentication service is not configured yet.");
   }
@@ -344,18 +355,19 @@ async function ensureFirebaseAuth() {
   const appMod = await import("https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js");
   const authMod = await import("https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js");
 
-  const app = appMod.initializeApp({
+  const app = appMod.getApps?.()[0] || appMod.initializeApp({
     apiKey: runtimeDefaults.firebaseApiKey,
     authDomain: runtimeDefaults.firebaseAuthDomain,
     projectId: runtimeDefaults.firebaseProjectId,
     appId: runtimeDefaults.firebaseAppId
   });
 
+  firebaseAuthMod = authMod;
   firebaseAuth = authMod.getAuth(app);
   authMod.onAuthStateChanged(firebaseAuth, (user: any) => {
     dom.accountEmail.textContent = user?.email || "Not authenticated";
   });
-  return { authMod, auth: firebaseAuth };
+  return { authMod: firebaseAuthMod, auth: firebaseAuth };
 }
 
 async function doAuth(mode: "signup" | "login") {
@@ -380,8 +392,8 @@ async function doAuth(mode: "signup" | "login") {
 
 async function signOut() {
   if (!firebaseAuth) return;
-  const authMod = await import("https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js");
-  await authMod.signOut(firebaseAuth);
+  const authApi = firebaseAuthMod || await import("https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js");
+  await authApi.signOut(firebaseAuth);
 }
 
 function fillSettingsForm() {
@@ -444,6 +456,26 @@ function saveItem() {
   renderSummary();
 }
 
+function setAiStatus(text: string, tone: "idle" | "working" | "success" | "error" = "idle") {
+  dom.aiOutputStatus.textContent = text;
+  dom.aiOutputStatus.classList.remove("is-working", "is-success", "is-error");
+  if (tone === "working") dom.aiOutputStatus.classList.add("is-working");
+  if (tone === "success") dom.aiOutputStatus.classList.add("is-success");
+  if (tone === "error") dom.aiOutputStatus.classList.add("is-error");
+}
+
+function setAiPlanPreview(tasks: Array<{ title: string; dueDate: string; kind: string }>) {
+  dom.aiOutputList.innerHTML = "";
+  if (!tasks.length) return;
+
+  for (const task of tasks.slice(0, 5)) {
+    const li = document.createElement("li");
+    li.className = "ai-output__item";
+    li.textContent = `${task.kind.toUpperCase()} · ${task.title}${task.dueDate ? ` · ${task.dueDate}` : ""}`;
+    dom.aiOutputList.append(li);
+  }
+}
+
 async function aiPlan(prompt: string) {
   const email = firebaseAuth?.currentUser?.email || "";
   const usingOwnKey = Boolean((settings.aiApiKey || runtimeDefaults.aiApiKey || "").trim());
@@ -466,9 +498,12 @@ async function aiPlan(prompt: string) {
     throw new Error(err?.error || `AI endpoint failed (${response.status})`);
   }
   const data = await response.json();
-  if (!Array.isArray(data?.tasks)) return;
+  const tasks = Array.isArray(data?.tasks) ? data.tasks : [];
+  if (!tasks.length) {
+    return { created: 0, provider: data?.provider || "", tasks: [] as Array<{ title: string; dueDate: string; kind: string }> };
+  }
 
-  for (const t of data.tasks) {
+  for (const t of tasks) {
     items.unshift({
       id: `i-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
       kind: t.kind === "project" ? "project" : "task",
@@ -487,10 +522,22 @@ async function aiPlan(prompt: string) {
   renderItems();
   renderSummary();
 
+  const provider = typeof data?.provider === "string" ? data.provider : "";
+  const trialRemaining = Number(data?.trial?.creditsRemaining || 0);
   if (!usingOwnKey && data?.trial) {
-    const remaining = Number(data.trial.creditsRemaining || 0);
-    alert(`Trial mode used. Remaining shared attempts: ${remaining}`);
+    alert(`Trial mode used. Remaining shared attempts: ${trialRemaining}`);
   }
+
+  return {
+    created: tasks.length,
+    provider,
+    trialRemaining,
+    tasks: tasks.map((t: any) => ({
+      title: String(t?.title || "AI generated item"),
+      dueDate: String(t?.dueDate || ""),
+      kind: t?.kind === "project" ? "project" : "task"
+    }))
+  };
 }
 
 function toBase64(bytes: Uint8Array) {
@@ -671,11 +718,20 @@ function bindEvents() {
   dom.chatSendBtn.addEventListener("click", async () => {
     const prompt = dom.chatInput.value.trim();
     if (!prompt) return;
+    dom.chatSendBtn.setAttribute("disabled", "true");
+    setAiStatus(i18n[locale].ai_running || "Generating plan...", "working");
+    setAiPlanPreview([]);
     dom.chatInput.value = "";
     try {
-      await aiPlan(prompt);
+      const result = await aiPlan(prompt);
+      const providerLabel = result?.provider ? ` · ${result.provider}` : "";
+      setAiStatus(`${i18n[locale].ai_success || "Plan generated"}: ${result?.created || 0}${providerLabel}`, "success");
+      setAiPlanPreview(result?.tasks || []);
     } catch (err: any) {
+      setAiStatus(`${i18n[locale].ai_error || "Could not generate plan"}: ${err.message || "Unknown error"}`, "error");
       alert(err.message || "Could not generate tasks.");
+    } finally {
+      dom.chatSendBtn.removeAttribute("disabled");
     }
   });
 
@@ -713,6 +769,7 @@ async function boot() {
   renderItems();
   renderSummary();
   renderVault();
+  setAiStatus(i18n[locale].ai_ready || "Ready to generate a plan.", "idle");
   bindEvents();
   runMotion();
 

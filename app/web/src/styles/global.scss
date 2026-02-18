@@ -498,6 +498,43 @@ a {
   flex-wrap: wrap;
 }
 
+.ai-output {
+  margin-top: 0.65rem;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 0.65rem;
+  background: rgba(12, 21, 35, 0.7);
+}
+
+.ai-output__status {
+  margin: 0;
+  font-size: 0.82rem;
+}
+
+.ai-output__status.is-working {
+  color: #9bc5ff;
+}
+
+.ai-output__status.is-success {
+  color: #90f4ce;
+}
+
+.ai-output__status.is-error {
+  color: #ffb3c2;
+}
+
+.ai-output__list {
+  margin: 0.55rem 0 0;
+  padding-left: 1rem;
+  display: grid;
+  gap: 0.3rem;
+}
+
+.ai-output__item {
+  color: #d2e3f8;
+  font-size: 0.79rem;
+}
+
 @media (max-width: 1020px) {
   .hero,
   .dashboard {
