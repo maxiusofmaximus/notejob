@@ -46,56 +46,69 @@ import MainLayout from "../layouts/MainLayout.astro";
     </aside>
 
     <section class="content-card">
-      <h2 data-i18n="overview">Overview</h2>
-      <p class="muted" id="lastActivity">No activity yet.</p>
-      <div class="metrics">
-        <article class="metric"><span data-i18n="tasks">Tasks</span><strong id="sumTasks">0</strong></article>
-        <article class="metric"><span data-i18n="projects">Projects</span><strong id="sumProjects">0</strong></article>
-        <article class="metric"><span data-i18n="resources">Resources</span><strong id="sumResources">0</strong></article>
-        <article class="metric"><span data-i18n="overdue">Overdue</span><strong id="sumOverdue">0</strong></article>
-      </div>
+      <section id="workspaceGuestView">
+        <h2>Welcome to your private workspace</h2>
+        <p class="muted">
+          Login or create your account to access your tasks, projects, resources, AI planner, and encrypted vault.
+        </p>
+        <div class="row" style="margin-top:0.75rem;">
+          <button class="btn btn--ghost" id="guestLoginBtn" type="button">Login</button>
+          <button class="btn btn--primary" id="guestSignupBtn" type="button">Signup</button>
+        </div>
+      </section>
 
-      <div class="cards-grid" id="itemsGrid"></div>
+      <section id="workspacePrivateView" hidden>
+        <h2 data-i18n="overview">Overview</h2>
+        <p class="muted" id="lastActivity">No activity yet.</p>
+        <div class="metrics">
+          <article class="metric"><span data-i18n="tasks">Tasks</span><strong id="sumTasks">0</strong></article>
+          <article class="metric"><span data-i18n="projects">Projects</span><strong id="sumProjects">0</strong></article>
+          <article class="metric"><span data-i18n="resources">Resources</span><strong id="sumResources">0</strong></article>
+          <article class="metric"><span data-i18n="overdue">Overdue</span><strong id="sumOverdue">0</strong></article>
+        </div>
 
-      <div style="margin-top:0.95rem;">
-        <h2 data-i18n="ai_planner">AI Planner</h2>
-        <p class="muted" data-i18n="ai_hint">Ask for a weekly plan, project breakdown, or next-step checklist.</p>
-        <div class="form-field">
-          <textarea id="chatInput" rows="3" placeholder="Plan tasks from 2026-03-01 to 2026-03-20 for Unreal prototype"></textarea>
-        </div>
-        <div class="row">
-          <button class="btn btn--primary" id="chatSendBtn" type="button" data-i18n="send">Send</button>
-        </div>
-        <div class="ai-output" id="aiOutput" aria-live="polite">
-          <p class="ai-output__status muted" id="aiOutputStatus">Ready to generate a plan.</p>
-          <ul class="ai-output__list" id="aiOutputList"></ul>
-        </div>
-      </div>
+        <div class="cards-grid" id="itemsGrid"></div>
 
-      <div style="margin-top:1.25rem;">
-        <h2>Private Vault</h2>
-        <p class="muted">Store sensitive snippets with tags. Data is encrypted in your browser using your vault passphrase.</p>
-        <div class="vault-row">
-          <label class="form-field">Vault passphrase
-            <input id="vaultPassphrase" type="password" autocomplete="new-password" />
-          </label>
-          <label class="form-field">Entry label
-            <input id="vaultLabel" type="text" autocomplete="off" />
-          </label>
-          <label class="form-field">Tags (comma)
-            <input id="vaultTags" type="text" placeholder="email,temp,game" autocomplete="off" />
-          </label>
+        <div style="margin-top:0.95rem;">
+          <h2 data-i18n="ai_planner">AI Planner</h2>
+          <p class="muted" data-i18n="ai_hint">Ask for a weekly plan, project breakdown, or next-step checklist.</p>
+          <div class="form-field">
+            <textarea id="chatInput" rows="3" placeholder="Plan tasks from 2026-03-01 to 2026-03-20 for Unreal prototype"></textarea>
+          </div>
+          <div class="row">
+            <button class="btn btn--primary" id="chatSendBtn" type="button" data-i18n="send">Send</button>
+          </div>
+          <div class="ai-output" id="aiOutput" aria-live="polite">
+            <p class="ai-output__status muted" id="aiOutputStatus">Ready to generate a plan.</p>
+            <ul class="ai-output__list" id="aiOutputList"></ul>
+          </div>
         </div>
-        <div class="form-field" style="margin-top:0.45rem;">
-          Secret content
-          <textarea id="vaultSecret" rows="3" placeholder="Password, token, or secure note"></textarea>
+
+        <div style="margin-top:1.25rem;">
+          <h2>Private Vault</h2>
+          <p class="muted">Store sensitive snippets with tags. Data is encrypted in your browser using your vault passphrase.</p>
+          <div class="vault-row">
+            <label class="form-field">Vault passphrase
+              <input id="vaultPassphrase" type="password" autocomplete="new-password" />
+            </label>
+            <label class="form-field">Entry label
+              <input id="vaultLabel" type="text" autocomplete="off" />
+            </label>
+            <label class="form-field">Tags (comma)
+              <input id="vaultTags" type="text" placeholder="email,temp,game" autocomplete="off" />
+            </label>
+          </div>
+          <div class="form-field" style="margin-top:0.45rem;">
+            Secret content
+            <textarea id="vaultSecret" rows="3" placeholder="Password, token, or secure note"></textarea>
+          </div>
+          <div class="row">
+            <button class="btn btn--primary" id="vaultSaveBtn" type="button">Save encrypted</button>
+            <button class="btn btn--ghost" id="vaultUnlockBtn" type="button">Unlock vault</button>
+          </div>
+          <div class="vault-grid" id="vaultGrid"></div>
         </div>
-        <div class="row">
-          <button class="btn btn--primary" id="vaultSaveBtn" type="button">Save encrypted</button>
-          <button class="btn btn--ghost" id="vaultUnlockBtn" type="button">Unlock vault</button>
-        </div>
-        <div class="vault-grid" id="vaultGrid"></div>
-      </div>
+      </section>
     </section>
   </main>
 

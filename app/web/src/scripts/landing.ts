@@ -8,6 +8,14 @@ type SiteCustomConfig = {
   layoutOrder?: string[];
 };
 const customKey = "notejob.site.custom.v1";
+const runtimeDefaults = {
+  firebaseApiKey: import.meta.env.PUBLIC_FIREBASE_API_KEY || "",
+  firebaseAuthDomain: import.meta.env.PUBLIC_FIREBASE_AUTH_DOMAIN || "",
+  firebaseProjectId: import.meta.env.PUBLIC_FIREBASE_PROJECT_ID || "",
+  firebaseAppId: import.meta.env.PUBLIC_FIREBASE_APP_ID || ""
+};
+let firebaseAuth: any = null;
+let firebaseAuthMod: any = null;
 
 const dictionary: Record<Locale, Record<string, string>> = {
   en: {
@@ -159,7 +167,118 @@ function runAnimations() {
   });
 }
 
+function getById<T extends HTMLElement>(id: string): T {
+  const el = document.getElementById(id);
+  if (!el) throw new Error(`Missing element: ${id}`);
+  return el as T;
+}
+
+const dom = {
+  landingLoginBtn: getById<HTMLButtonElement>("landingLoginBtn"),
+  landingSignupBtn: getById<HTMLButtonElement>("landingSignupBtn"),
+  heroLoginBtn: getById<HTMLButtonElement>("heroLoginBtn"),
+  heroSignupBtn: getById<HTMLButtonElement>("heroSignupBtn"),
+  landingAuthModal: getById<HTMLDialogElement>("landingAuthModal"),
+  landingAuthTitle: getById<HTMLElement>("landingAuthTitle"),
+  landingAuthMessage: getById<HTMLElement>("landingAuthMessage"),
+  landingAuthEmail: getById<HTMLInputElement>("landingAuthEmail"),
+  landingAuthPassword: getById<HTMLInputElement>("landingAuthPassword"),
+  landingSubmitSignupBtn: getById<HTMLButtonElement>("landingSubmitSignupBtn"),
+  landingSubmitLoginBtn: getById<HTMLButtonElement>("landingSubmitLoginBtn"),
+  landingCloseAuthBtn: getById<HTMLButtonElement>("landingCloseAuthBtn")
+};
+
+function setAuthMessage(text: string) {
+  dom.landingAuthMessage.textContent = text;
+}
+
+function openAuth(mode: "signup" | "login") {
+  dom.landingAuthModal.dataset.mode = mode;
+  if (mode === "signup") {
+    dom.landingAuthTitle.textContent = "Create account";
+    setAuthMessage("Create your account. We will send an email confirmation link.");
+  } else {
+    dom.landingAuthTitle.textContent = "Login";
+    setAuthMessage("Login to access your private workspace.");
+  }
+  dom.landingSubmitSignupBtn.classList.toggle("btn--primary", mode === "signup");
+  dom.landingSubmitSignupBtn.classList.toggle("btn--ghost", mode !== "signup");
+  dom.landingSubmitLoginBtn.classList.toggle("btn--primary", mode === "login");
+  dom.landingSubmitLoginBtn.classList.toggle("btn--ghost", mode !== "login");
+  dom.landingAuthModal.showModal();
+}
+
+async function ensureFirebaseAuth() {
+  if (firebaseAuth && firebaseAuthMod) return { auth: firebaseAuth, authMod: firebaseAuthMod };
+  if (!runtimeDefaults.firebaseApiKey || !runtimeDefaults.firebaseAuthDomain || !runtimeDefaults.firebaseProjectId || !runtimeDefaults.firebaseAppId) {
+    throw new Error("Authentication service is not configured yet.");
+  }
+
+  const appMod = await import("https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js");
+  const authMod = await import("https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js");
+  const app = appMod.getApps?.()[0] || appMod.initializeApp({
+    apiKey: runtimeDefaults.firebaseApiKey,
+    authDomain: runtimeDefaults.firebaseAuthDomain,
+    projectId: runtimeDefaults.firebaseProjectId,
+    appId: runtimeDefaults.firebaseAppId
+  });
+
+  firebaseAuth = authMod.getAuth(app);
+  firebaseAuthMod = authMod;
+  return { auth: firebaseAuth, authMod: firebaseAuthMod };
+}
+
+async function submitAuth(mode: "signup" | "login") {
+  const email = dom.landingAuthEmail.value.trim();
+  const password = dom.landingAuthPassword.value;
+  if (!email || !password) {
+    setAuthMessage("Email and password are required.");
+    return;
+  }
+  if (password.length < 8) {
+    setAuthMessage("Use at least 8 characters for your password.");
+    return;
+  }
+
+  const { auth, authMod } = await ensureFirebaseAuth();
+  if (mode === "signup") {
+    const cred = await authMod.createUserWithEmailAndPassword(auth, email, password);
+    const redirect = `${window.location.origin}/confirm-email`;
+    await authMod.sendEmailVerification(cred.user, { url: redirect });
+    await authMod.signOut(auth);
+    setAuthMessage("Account created. Check your email to confirm before logging in.");
+    return;
+  }
+
+  await authMod.signInWithEmailAndPassword(auth, email, password);
+  if (auth.currentUser && !auth.currentUser.emailVerified) {
+    await authMod.sendEmailVerification(auth.currentUser, { url: `${window.location.origin}/confirm-email` });
+    await authMod.signOut(auth);
+    throw new Error("Email not confirmed yet. We sent a new confirmation link.");
+  }
+  window.location.href = "/app";
+}
+
+function bindAuthEvents() {
+  dom.landingSignupBtn.addEventListener("click", () => openAuth("signup"));
+  dom.landingLoginBtn.addEventListener("click", () => openAuth("login"));
+  dom.heroSignupBtn.addEventListener("click", () => openAuth("signup"));
+  dom.heroLoginBtn.addEventListener("click", () => openAuth("login"));
+  dom.landingCloseAuthBtn.addEventListener("click", () => dom.landingAuthModal.close());
+  dom.landingSubmitSignupBtn.addEventListener("click", () => {
+    submitAuth("signup").catch((err: any) => setAuthMessage(err.message || "Could not create account."));
+  });
+  dom.landingSubmitLoginBtn.addEventListener("click", () => {
+    submitAuth("login").catch((err: any) => setAuthMessage(err.message || "Could not login."));
+  });
+
+  const params = new URLSearchParams(window.location.search);
+  const auth = params.get("auth");
+  if (auth === "signup" || auth === "login") openAuth(auth);
+}
+
 detectLocale().finally(() => {
   applyCustomSite();
   runAnimations();
+  bindAuthEvents();
 });

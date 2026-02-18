@@ -143,6 +143,10 @@ const dom = {
   openLoginBtn: getById("openLoginBtn"),
   openSignupBtn: getById("openSignupBtn"),
   signOutBtn: getById("signOutBtn"),
+  guestLoginBtn: getById("guestLoginBtn"),
+  guestSignupBtn: getById("guestSignupBtn"),
+  workspaceGuestView: getById("workspaceGuestView"),
+  workspacePrivateView: getById("workspacePrivateView"),
   newTaskBtn: getById("newTaskBtn"),
   newProjectBtn: getById("newProjectBtn"),
   authModal: getById("authModal") as HTMLDialogElement,
@@ -279,6 +283,12 @@ function runStatusCheck() {
   renderSystemStatus();
 }
 
+function renderWorkspaceVisibility() {
+  const authenticated = Boolean(firebaseAuth?.currentUser);
+  (dom.workspaceGuestView as HTMLElement).hidden = authenticated;
+  (dom.workspacePrivateView as HTMLElement).hidden = !authenticated;
+}
+
 function toDateLabel(item: any) {
   return `${item.startDate || "n/a"} -> ${item.dueDate || "n/a"} · ${item.doneSubtasks}/${item.totalSubtasks}`;
 }
@@ -371,6 +381,7 @@ async function ensureFirebaseAuth() {
     dom.accountEmail.textContent = user?.email || "Not authenticated";
     items = loadItems();
     vaultEntries = loadVaultEntries();
+    renderWorkspaceVisibility();
     renderItems();
     renderSummary();
     renderVault();
@@ -741,6 +752,8 @@ function bindEvents() {
 
   dom.openSignupBtn.addEventListener("click", () => openAuth("signup"));
   dom.openLoginBtn.addEventListener("click", () => openAuth("login"));
+  dom.guestSignupBtn.addEventListener("click", () => openAuth("signup"));
+  dom.guestLoginBtn.addEventListener("click", () => openAuth("login"));
   dom.closeAuthModalBtn.addEventListener("click", () => dom.authModal.close());
   dom.submitSignupBtn.addEventListener("click", () => doAuth("signup").catch((err) => alert(err.message)));
   dom.submitLoginBtn.addEventListener("click", () => doAuth("login").catch((err) => alert(err.message)));
@@ -808,6 +821,7 @@ async function boot() {
   items = loadItems();
   vaultEntries = loadVaultEntries();
   renderSystemStatus();
+  renderWorkspaceVisibility();
   renderItems();
   renderSummary();
   renderVault();

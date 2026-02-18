@@ -18,8 +18,8 @@ import MainLayout from "../layouts/MainLayout.astro";
       <div class="header-actions">
         <a class="btn btn--ghost" href="/docs">Docs</a>
         <a class="btn btn--ghost" href="#contact" data-i18n="contact">Contact</a>
-        <a class="btn btn--ghost" href="/app" data-i18n="login">Login</a>
-        <a class="btn btn--primary" href="/app?auth=signup" data-i18n="signup">Signup</a>
+        <button class="btn btn--ghost" id="landingLoginBtn" type="button" data-i18n="login">Login</button>
+        <button class="btn btn--primary" id="landingSignupBtn" type="button" data-i18n="signup">Signup</button>
       </div>
     </div>
   </header>
@@ -41,8 +41,8 @@ import MainLayout from "../layouts/MainLayout.astro";
           <span data-i18n="tag_5">Team-ready exports</span>
         </div>
         <div class="hero-ctas">
-          <a class="btn btn--primary" id="heroCtaLabel" href="/app?auth=signup" data-i18n="start_now">Create your workspace</a>
-          <a class="btn" href="/app" data-i18n="explore_dashboard">See product demo</a>
+          <button class="btn btn--primary" id="heroSignupBtn" type="button" data-i18n="start_now">Create your workspace</button>
+          <button class="btn" id="heroLoginBtn" type="button" data-i18n="explore_dashboard">See product demo</button>
         </div>
       </article>
       <aside class="panel hero-side landing-animate">
@@ -107,6 +107,26 @@ import MainLayout from "../layouts/MainLayout.astro";
 
     <p class="footer-note">NoteJob · Built with Astro + Bun + Sass + GSAP + anime.js</p>
   </main>
+
+  <dialog class="modal" id="landingAuthModal">
+    <form method="dialog" class="modal-card">
+      <h3 id="landingAuthTitle">Access</h3>
+      <p class="muted" id="landingAuthMessage">Login or create your account to continue.</p>
+      <label class="form-field">
+        Email
+        <input id="landingAuthEmail" type="email" autocomplete="email" />
+      </label>
+      <label class="form-field">
+        Password
+        <input id="landingAuthPassword" type="password" autocomplete="current-password" />
+      </label>
+      <div class="row">
+        <button class="btn btn--primary" type="button" id="landingSubmitSignupBtn">Create account</button>
+        <button class="btn btn--ghost" type="button" id="landingSubmitLoginBtn">Login</button>
+        <button class="btn" type="button" id="landingCloseAuthBtn">Close</button>
+      </div>
+    </form>
+  </dialog>
 
   <script>
     import "../scripts/landing.ts";
