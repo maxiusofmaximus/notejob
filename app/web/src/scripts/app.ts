@@ -29,7 +29,8 @@ type VaultEntry = {
 const APP_NAME = "NoteJob";
 const settingsKey = "notejob.user.settings.v2";
 const siteCustomKey = "notejob.site.custom.v1";
-const vaultKey = "notejob.vault.entries.v1";
+const vaultKeyBase = "notejob.vault.entries.v1";
+const itemsKeyBase = "notejob.items.v1";
 
 const runtimeDefaults = {
   aiBaseUrl: import.meta.env.PUBLIC_AI_BASE_URL || "https://api.openai.com/v1",
@@ -105,47 +106,7 @@ const i18n: Record<Locale, Record<string, string>> = {
 };
 
 const settings = loadSettings();
-const items = [
-  {
-    id: "t1",
-    kind: "task",
-    title: "Slime evolution game loop",
-    summary: "Define absorb mechanics, growth progression, and unlock milestones.",
-    status: "researching",
-    startDate: "2026-02-20",
-    dueDate: "2026-03-01",
-    doneSubtasks: 2,
-    totalSubtasks: 5,
-    tags: ["Unity", "Design", "Combat"],
-    updatedAt: "2026-02-15T10:00:00Z"
-  },
-  {
-    id: "p1",
-    kind: "project",
-    title: "Aura-like assistant for Unity",
-    summary: "Roadmap for an in-editor AI assistant with script generation and docs linking.",
-    status: "inbox",
-    startDate: "2026-02-25",
-    dueDate: "2026-03-20",
-    doneSubtasks: 1,
-    totalSubtasks: 6,
-    tags: ["AI", "Unity"],
-    updatedAt: "2026-02-16T00:40:00Z"
-  },
-  {
-    id: "p2",
-    kind: "project",
-    title: "Satisfactory x Dungeons hybrid concept",
-    summary: "Blend factory automation with dungeon territory control loops.",
-    status: "ready",
-    startDate: "2026-03-04",
-    dueDate: "2026-04-30",
-    doneSubtasks: 3,
-    totalSubtasks: 8,
-    tags: ["Unreal", "Systems", "Production"],
-    updatedAt: "2026-02-16T09:40:00Z"
-  }
-];
+let items: any[] = [];
 const systemChecks = [
   { name: "Sync", status: "ready" },
   { name: "Account security", status: "ready" },
@@ -156,9 +117,10 @@ const systemChecks = [
 
 let firebaseAuth: any = null;
 let firebaseAuthMod: any = null;
+let currentUserId = "guest";
 let locale: Locale = "en";
 let vaultPassphraseCache = "";
-let vaultEntries = loadVaultEntries();
+let vaultEntries: VaultEntry[] = [];
 
 const dom = {
   accountEmail: getById("accountEmail"),
@@ -171,7 +133,6 @@ const dom = {
   sumOverdue: getById("sumOverdue"),
   lastActivity: getById("lastActivity"),
   chatInput: getById("chatInput") as HTMLTextAreaElement,
-  trialEmail: getById("trialEmail") as HTMLInputElement,
   chatSendBtn: getById("chatSendBtn"),
   aiOutputStatus: getById("aiOutputStatus"),
   aiOutputList: getById("aiOutputList"),
@@ -241,6 +202,25 @@ function saveSettings() {
   localStorage.setItem(settingsKey, JSON.stringify(settings));
 }
 
+function scopedKey(base: string) {
+  return `${base}:${currentUserId}`;
+}
+
+function loadItems() {
+  try {
+    const raw = localStorage.getItem(scopedKey(itemsKeyBase));
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveItems() {
+  localStorage.setItem(scopedKey(itemsKeyBase), JSON.stringify(items));
+}
+
 function applyTranslations() {
   document.querySelectorAll<HTMLElement>("[data-i18n]").forEach((el) => {
     const key = el.dataset.i18n || "";
@@ -305,6 +285,17 @@ function toDateLabel(item: any) {
 
 function renderItems() {
   dom.itemsGrid.innerHTML = "";
+  if (!firebaseAuth?.currentUser) {
+    const empty = document.createElement("article");
+    empty.className = "task-card";
+    empty.innerHTML = `
+      <h3>Private workspace</h3>
+      <p>Login or create account to see your own tasks, projects, and resources.</p>
+    `;
+    dom.itemsGrid.append(empty);
+    return;
+  }
+
   const sorted = [...items].sort((a, b) => (b.updatedAt || "").localeCompare(a.updatedAt || ""));
   for (const item of sorted) {
     const article = document.createElement("article");
@@ -323,6 +314,15 @@ function renderItems() {
 }
 
 function renderSummary() {
+  if (!firebaseAuth?.currentUser) {
+    dom.sumTasks.textContent = "0";
+    dom.sumProjects.textContent = "0";
+    dom.sumResources.textContent = "0";
+    dom.sumOverdue.textContent = "0";
+    dom.lastActivity.textContent = "Login required to view your account workspace.";
+    return;
+  }
+
   const tasks = items.filter((x) => x.kind === "task").length;
   const projects = items.filter((x) => x.kind === "project").length;
   const resources = items.filter((x) => x.status === "done").length;
@@ -332,11 +332,12 @@ function renderSummary() {
   dom.sumProjects.textContent = String(projects);
   dom.sumResources.textContent = String(resources);
   dom.sumOverdue.textContent = String(overdue);
-  dom.lastActivity.textContent = `${sortedTop().title} · ${sortedTop().status} · ${toDateLabel(sortedTop())}`;
+  const top = sortedTop();
+  dom.lastActivity.textContent = top ? `${top.title} · ${top.status} · ${toDateLabel(top)}` : "No activity yet.";
 }
 
 function sortedTop() {
-  return [...items].sort((a, b) => (b.updatedAt || "").localeCompare(a.updatedAt || ""))[0];
+  return [...items].sort((a, b) => (b.updatedAt || "").localeCompare(a.updatedAt || ""))[0] || null;
 }
 
 function openAuth(mode: "signup" | "login") {
@@ -366,7 +367,13 @@ async function ensureFirebaseAuth() {
   firebaseAuthMod = authMod;
   firebaseAuth = authMod.getAuth(app);
   authMod.onAuthStateChanged(firebaseAuth, (user: any) => {
+    currentUserId = user?.uid || "guest";
     dom.accountEmail.textContent = user?.email || "Not authenticated";
+    items = loadItems();
+    vaultEntries = loadVaultEntries();
+    renderItems();
+    renderSummary();
+    renderVault();
   });
   return { authMod: firebaseAuthMod, auth: firebaseAuth };
 }
@@ -445,6 +452,10 @@ function openCreator(kind: "task" | "project") {
 }
 
 function saveItem() {
+  if (!firebaseAuth?.currentUser) {
+    openAuth("login");
+    return;
+  }
   const title = dom.newTitle.value.trim();
   if (!title) return;
   items.unshift({
@@ -460,6 +471,7 @@ function saveItem() {
     tags: splitCsv(dom.newResources.value).length ? splitCsv(dom.newResources.value) : ["Brief"],
     updatedAt: new Date().toISOString()
   });
+  saveItems();
   dom.creatorModal.close();
   renderItems();
   renderSummary();
@@ -486,7 +498,7 @@ function setAiPlanPreview(tasks: Array<{ title: string; dueDate: string; kind: s
 }
 
 async function aiPlan(prompt: string) {
-  const email = firebaseAuth?.currentUser?.email || dom.trialEmail.value.trim();
+  const email = firebaseAuth?.currentUser?.email || "";
   const usingOwnKey = Boolean((settings.aiApiKey || runtimeDefaults.aiApiKey || "").trim());
   const response = await fetch("/api/ai/plan", {
     method: "POST",
@@ -528,6 +540,7 @@ async function aiPlan(prompt: string) {
     });
   }
 
+  saveItems();
   renderItems();
   renderSummary();
 
@@ -596,7 +609,7 @@ async function decryptVaultSecret(entry: VaultEntry, passphrase: string) {
 
 function loadVaultEntries(): VaultEntry[] {
   try {
-    const raw = localStorage.getItem(vaultKey);
+    const raw = localStorage.getItem(scopedKey(vaultKeyBase));
     if (!raw) return [];
     const parsed = JSON.parse(raw);
     return Array.isArray(parsed) ? parsed : [];
@@ -606,11 +619,19 @@ function loadVaultEntries(): VaultEntry[] {
 }
 
 function saveVaultEntries() {
-  localStorage.setItem(vaultKey, JSON.stringify(vaultEntries));
+  localStorage.setItem(scopedKey(vaultKeyBase), JSON.stringify(vaultEntries));
 }
 
 function renderVault() {
   dom.vaultGrid.innerHTML = "";
+  if (!firebaseAuth?.currentUser) {
+    const card = document.createElement("article");
+    card.className = "vault-card";
+    card.innerHTML = "<strong>Private vault is available after login.</strong>";
+    dom.vaultGrid.append(card);
+    return;
+  }
+
   const sorted = vaultEntries.slice().sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   for (const entry of sorted) {
     const card = document.createElement("article");
@@ -672,6 +693,10 @@ function renderVault() {
 }
 
 async function saveVaultEntry() {
+  if (!firebaseAuth?.currentUser) {
+    openAuth("login");
+    return;
+  }
   const passphrase = dom.vaultPassphrase.value;
   const label = dom.vaultLabel.value.trim();
   const secret = dom.vaultSecret.value.trim();
@@ -720,11 +745,16 @@ function bindEvents() {
   dom.submitSignupBtn.addEventListener("click", () => doAuth("signup").catch((err) => alert(err.message)));
   dom.submitLoginBtn.addEventListener("click", () => doAuth("login").catch((err) => alert(err.message)));
   dom.signOutBtn.addEventListener("click", () => signOut().catch((err) => alert(err.message)));
-  dom.newTaskBtn.addEventListener("click", () => openCreator("task"));
-  dom.newProjectBtn.addEventListener("click", () => openCreator("project"));
+  dom.newTaskBtn.addEventListener("click", () => (firebaseAuth?.currentUser ? openCreator("task") : openAuth("login")));
+  dom.newProjectBtn.addEventListener("click", () => (firebaseAuth?.currentUser ? openCreator("project") : openAuth("login")));
   dom.closeCreatorBtn.addEventListener("click", () => dom.creatorModal.close());
   dom.saveItemBtn.addEventListener("click", saveItem);
   dom.chatSendBtn.addEventListener("click", async () => {
+    if (!firebaseAuth?.currentUser) {
+      alert("Login is required to use AI planner.");
+      openAuth("login");
+      return;
+    }
     const prompt = dom.chatInput.value.trim();
     if (!prompt) return;
     dom.chatSendBtn.setAttribute("disabled", "true");
@@ -774,6 +804,9 @@ function runMotion() {
 async function boot() {
   applySiteCustomization();
   await detectLocale();
+  currentUserId = "guest";
+  items = loadItems();
+  vaultEntries = loadVaultEntries();
   renderSystemStatus();
   renderItems();
   renderSummary();
