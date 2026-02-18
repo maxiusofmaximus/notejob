@@ -9,6 +9,12 @@ type AiPlanRequest = {
   email?: string;
 };
 
+type ProviderCandidate = {
+  name: string;
+  baseUrl: string;
+  apiKey: string;
+};
+
 type PlannedTask = {
   title: string;
   summary: string;
@@ -62,28 +68,14 @@ export const POST: APIRoute = async ({ request }) => {
     return new Response(JSON.stringify({ error: "Prompt is required." }), { status: 400 });
   }
 
-  const baseUrl = pick(
-    body.baseUrl,
-    process.env.NOTEJOB_AI_BASE_URL,
-    process.env.AI_BASE_URL,
-    process.env.PUBLIC_AI_BASE_URL,
-    "https://api.openai.com/v1"
-  ).replace(/\/$/, "");
-  const model = pick(body.model, process.env.NOTEJOB_AI_MODEL, process.env.AI_MODEL, process.env.PUBLIC_AI_MODEL, "gpt-4o-mini");
+  const baseUrl = pick(body.baseUrl, process.env.NOTEJOB_AI_BASE_URL, process.env.AI_BASE_URL, "https://api.openai.com/v1").replace(/\/$/, "");
+  const model = pick(body.model, process.env.NOTEJOB_AI_MODEL, process.env.AI_MODEL, "gpt-4o-mini");
   const userApiKey = pick(body.apiKey);
-  const fallbackTrialApiKey = pick(process.env.CEREBRAS_TRIAL_API_KEY, process.env.NOTEJOB_AI_API_KEY, process.env.AI_API_KEY, process.env.OPENAI_API_KEY);
-  const apiKey = pick(
-    userApiKey,
-    fallbackTrialApiKey
-  );
-
-  if (!apiKey) {
-    return new Response(JSON.stringify({ error: "AI API key is missing on server." }), { status: 503 });
-  }
 
   // BYOK priority: if user sends their own key, no trial credit is consumed.
   // Trial mode: if no user key, consume one trial credit from shared-key pool.
   let trialState = null;
+  const providers: ProviderCandidate[] = [];
   if (!userApiKey) {
     const email = (body.email || "").trim().toLowerCase();
     if (!email) {
@@ -100,46 +92,82 @@ export const POST: APIRoute = async ({ request }) => {
       );
     }
     trialState = consume.state;
+    const cerebrasKey = pick(process.env.CEREBRAS_TRIAL_API_KEY, process.env.NOTEJOB_AI_API_KEY, process.env.AI_API_KEY);
+    const cerebrasBaseUrl = pick(process.env.CEREBRAS_BASE_URL, "https://api.cerebras.ai/v1").replace(/\/$/, "");
+    const groqKey = pick(process.env.GROQ_TRIAL_API_KEY, process.env.GROQ_API_KEY);
+    const groqBaseUrl = pick(process.env.GROQ_BASE_URL, "https://api.groq.com/openai/v1").replace(/\/$/, "");
+
+    if (cerebrasKey) providers.push({ name: "cerebras", baseUrl: cerebrasBaseUrl, apiKey: cerebrasKey });
+    if (groqKey) providers.push({ name: "groq", baseUrl: groqBaseUrl, apiKey: groqKey });
   } else if (body.email) {
     trialState = getTrialState(body.email) || null;
+    providers.push({ name: "byok", baseUrl, apiKey: userApiKey });
+  } else {
+    providers.push({ name: "byok", baseUrl, apiKey: userApiKey });
   }
 
-  const providerRes = await fetch(`${baseUrl}/chat/completions`, {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-      authorization: `Bearer ${apiKey}`
-    },
-    body: JSON.stringify({
-      model,
-      response_format: { type: "json_object" },
-      messages: [
-        {
-          role: "system",
-          content:
-            "Return JSON {tasks:[{title,summary,kind,status,startDate,dueDate,doneSubtasks,totalSubtasks,resources}]}"
-        },
-        { role: "user", content: prompt }
-      ]
-    })
-  });
+  if (providers.length === 0) {
+    return new Response(JSON.stringify({ error: "No AI providers configured on server." }), { status: 503 });
+  }
 
-  if (!providerRes.ok) {
-    const details = await providerRes.text();
+  const providerErrors: Array<{ provider: string; status: number; details: string }> = [];
+  let content = "";
+  let providerUsed = "";
+
+  for (const provider of providers) {
+    const providerRes = await fetch(`${provider.baseUrl}/chat/completions`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        authorization: `Bearer ${provider.apiKey}`
+      },
+      body: JSON.stringify({
+        model,
+        response_format: { type: "json_object" },
+        messages: [
+          {
+            role: "system",
+            content:
+              "Return JSON {tasks:[{title,summary,kind,status,startDate,dueDate,doneSubtasks,totalSubtasks,resources}]}"
+          },
+          { role: "user", content: prompt }
+        ]
+      })
+    });
+
+    if (!providerRes.ok) {
+      const details = await providerRes.text();
+      providerErrors.push({
+        provider: provider.name,
+        status: providerRes.status,
+        details: details.slice(0, 300)
+      });
+      continue;
+    }
+
+    const providerData = await providerRes.json().catch(() => null);
+    const maybeContent = providerData?.choices?.[0]?.message?.content;
+    if (maybeContent) {
+      content = maybeContent;
+      providerUsed = provider.name;
+      break;
+    }
+    providerErrors.push({
+      provider: provider.name,
+      status: 502,
+      details: "Missing choices[0].message.content"
+    });
+  }
+
+  if (!content) {
     return new Response(
       JSON.stringify({
-        error: "AI provider request failed.",
-        status: providerRes.status,
-        details: details.slice(0, 800)
+        error: "All AI providers failed.",
+        providersTried: providers.map((p) => p.name),
+        failures: providerErrors
       }),
       { status: 502 }
     );
-  }
-
-  const providerData = await providerRes.json().catch(() => null);
-  const content = providerData?.choices?.[0]?.message?.content;
-  if (!content) {
-    return new Response(JSON.stringify({ tasks: [] }), { status: 200 });
   }
 
   let parsed: { tasks?: unknown[] } = {};
@@ -150,7 +178,7 @@ export const POST: APIRoute = async ({ request }) => {
   }
 
   const tasks = Array.isArray(parsed.tasks) ? parsed.tasks.map(normalizeTask) : [];
-  return new Response(JSON.stringify({ tasks, trial: trialState }), {
+  return new Response(JSON.stringify({ tasks, trial: trialState, provider: providerUsed }), {
     status: 200,
     headers: { "content-type": "application/json; charset=utf-8" }
   });

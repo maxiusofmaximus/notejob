@@ -132,7 +132,7 @@ Only `prompt` is required.
 
 Modes:
 - `BYOK` mode: send `apiKey` (user key). No trial credit is consumed.
-- `Trial` mode: omit `apiKey`. Server uses shared trial key and consumes one credit from `email`.
+- `Trial` mode: omit `apiKey`. Server uses shared trial providers and consumes one credit from `email`.
 
 Success response (`200`):
 ```json
@@ -150,6 +150,7 @@ Success response (`200`):
       "resources": ["Unity", "ECS"]
     }
   ],
+  "provider": "cerebras",
   "trial": {
     "creditsRemaining": 0,
     "trialUsed": 1,
@@ -162,13 +163,18 @@ Error responses:
 - `400`: invalid JSON payload or missing `prompt`.
 - `400`: trial mode without `email`.
 - `402`: no trial credits remaining.
-- `502`: upstream provider error or invalid provider JSON response format.
+- `502`: all upstream providers failed or invalid provider JSON response format.
 - `503`: no API key available on server/request.
 
 Configuration resolution order:
-- `baseUrl`: request `baseUrl` -> `NOTEJOB_AI_BASE_URL` -> `AI_BASE_URL` -> `PUBLIC_AI_BASE_URL` -> `https://api.openai.com/v1`
-- `model`: request `model` -> `NOTEJOB_AI_MODEL` -> `AI_MODEL` -> `PUBLIC_AI_MODEL` -> `gpt-4o-mini`
-- `apiKey`: request `apiKey` -> `CEREBRAS_TRIAL_API_KEY` -> `NOTEJOB_AI_API_KEY` -> `AI_API_KEY` -> `OPENAI_API_KEY`
+- `baseUrl`: request `baseUrl` -> `NOTEJOB_AI_BASE_URL` -> `AI_BASE_URL` -> `https://api.openai.com/v1`
+- `model`: request `model` -> `NOTEJOB_AI_MODEL` -> `AI_MODEL` -> `gpt-4o-mini`
+- `apiKey` BYOK: request `apiKey` only
+- Trial providers:
+  - Cerebras key: `CEREBRAS_TRIAL_API_KEY` -> `NOTEJOB_AI_API_KEY` -> `AI_API_KEY`
+  - Cerebras base URL: `CEREBRAS_BASE_URL` (default `https://api.cerebras.ai/v1`)
+  - Groq key: `GROQ_TRIAL_API_KEY` -> `GROQ_API_KEY`
+  - Groq base URL: `GROQ_BASE_URL` (default `https://api.groq.com/openai/v1`)
 
 Notes:
 - This endpoint is consumed by the web app chat planner and keeps provider orchestration on the server.
