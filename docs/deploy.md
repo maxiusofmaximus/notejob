@@ -110,3 +110,7 @@
 ## Rollback
 - Revertir a deployment estable anterior en Vercel.
 - Si aplica, ejecutar rollback de migración según plan.
+# Production Deployment Source of Truth
+
+The production deployment flow is `GitHub -> Vercel`.
+Direct local CLI deployments should only be used for temporary diagnostics.
