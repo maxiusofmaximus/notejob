@@ -124,3 +124,39 @@ CREATE TABLE IF NOT EXISTS analyses (
 );
 
 CREATE INDEX IF NOT EXISTS idx_analyses_item_id ON analyses(item_id);
+
+CREATE TABLE IF NOT EXISTS items (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL,
+  kind TEXT NOT NULL,
+  title TEXT NOT NULL,
+  summary TEXT,
+  status TEXT NOT NULL,
+  start_date TEXT,
+  due_date TEXT,
+  done_subtasks INTEGER NOT NULL DEFAULT 0,
+  total_subtasks INTEGER NOT NULL DEFAULT 1,
+  resources_json TEXT DEFAULT '[]',
+  tags_json TEXT DEFAULT '[]',
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_items_user_id ON items(user_id);
+CREATE INDEX IF NOT EXISTS idx_items_status ON items(status);
+CREATE INDEX IF NOT EXISTS idx_items_due_date ON items(due_date);
+
+CREATE TABLE IF NOT EXISTS vault_entries (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL,
+  label TEXT NOT NULL,
+  tags_json TEXT DEFAULT '[]',
+  cipher TEXT NOT NULL,
+  iv TEXT NOT NULL,
+  salt TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_vault_entries_user_id ON vault_entries(user_id);

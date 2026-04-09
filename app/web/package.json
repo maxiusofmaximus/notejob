@@ -6,13 +6,15 @@
   "scripts": {
     "dev": "astro dev",
     "build": "astro build",
-    "preview": "astro preview"
+    "preview": "astro preview",
+    "test": "bun test"
   },
   "dependencies": {
     "@astrojs/node": "^9.4.2",
     "@astrojs/vercel": "^9.0.4",
     "animejs": "^3.2.2",
     "astro": "^5.2.0",
+    "firebase-admin": "^12.7.0",
     "gridstack": "^10.2.0",
     "gsap": "^3.12.5"
   },

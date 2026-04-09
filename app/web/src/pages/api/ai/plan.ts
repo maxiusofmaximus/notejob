@@ -1,5 +1,6 @@
 import type { APIRoute } from "astro";
 import { consumeTrialCredit, getTrialState } from "../../../lib/ai-trial";
+import { requireUser } from "../../../lib/api-helpers";
 
 type AiPlanRequest = {
   prompt?: string;
@@ -128,6 +129,19 @@ function extractTasks(parsed: any, content: string, prompt: string) {
 }
 
 export const POST: APIRoute = async ({ request }) => {
+  try {
+    await requireUser(request);
+  } catch (error: any) {
+    const message = String(error?.message || "");
+    if (message === "missing-auth") {
+      return new Response(JSON.stringify({ error: "Missing auth token." }), { status: 401 });
+    }
+    if (message === "firebase-admin-not-configured") {
+      return new Response(JSON.stringify({ error: "Firebase admin not configured." }), { status: 503 });
+    }
+    return new Response(JSON.stringify({ error: "Unauthorized." }), { status: 401 });
+  }
+
   let body: AiPlanRequest;
   try {
     body = await request.json();

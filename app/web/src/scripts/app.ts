@@ -119,6 +119,7 @@ const systemChecks = [
 
 let firebaseAuth: any = null;
 let firebaseAuthMod: any = null;
+let lastIdToken = "";
 let currentUserId = "guest";
 let locale: Locale = "en";
 let vaultPassphraseCache = "";
@@ -230,6 +231,19 @@ function loadItems() {
 
 function saveItems() {
   localStorage.setItem(scopedKey(itemsKeyBase), JSON.stringify(items));
+}
+
+async function getIdToken() {
+  if (!firebaseAuth?.currentUser) return "";
+  lastIdToken = await firebaseAuth.currentUser.getIdToken();
+  return lastIdToken;
+}
+
+async function fetchWithAuth(input: RequestInfo, init?: RequestInit) {
+  const token = await getIdToken();
+  const headers = new Headers(init?.headers || {});
+  if (token) headers.set("authorization", `Bearer ${token}`);
+  return fetch(input, { ...init, headers });
 }
 
 function applyTranslations() {
@@ -404,9 +418,14 @@ async function ensureFirebaseAuth() {
   firebaseAuth = authMod.getAuth(app);
   authMod.onAuthStateChanged(firebaseAuth, (user: any) => {
     currentUserId = user?.uid || "guest";
+    lastIdToken = "";
     renderAccountIdentity(user || null);
     items = loadItems();
     vaultEntries = loadVaultEntries();
+    if (user) {
+      refreshRemoteItems().catch(() => null);
+      refreshRemoteVault().catch(() => null);
+    }
     renderWorkspaceVisibility();
     renderItems();
     renderSummary();
@@ -467,6 +486,7 @@ async function signOut() {
   if (!firebaseAuth) return;
   const authApi = firebaseAuthMod || await import("https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js");
   await authApi.signOut(firebaseAuth);
+  lastIdToken = "";
   renderAccountIdentity(null);
 }
 
@@ -516,7 +536,7 @@ function saveItem() {
   }
   const title = dom.newTitle.value.trim();
   if (!title) return;
-  items.unshift({
+  const nextItem = {
     id: `i-${Date.now()}`,
     kind: dom.newKind.value,
     title,
@@ -528,8 +548,10 @@ function saveItem() {
     totalSubtasks: Math.max(1, Number(dom.newTotalSubtasks.value || 1)),
     tags: splitCsv(dom.newResources.value).length ? splitCsv(dom.newResources.value) : ["Brief"],
     updatedAt: new Date().toISOString()
-  });
+  };
+  items.unshift(nextItem);
   saveItems();
+  saveRemoteItem(nextItem).catch(() => null);
   dom.creatorModal.close();
   renderItems();
   renderSummary();
@@ -558,7 +580,7 @@ function setAiPlanPreview(tasks: Array<{ title: string; dueDate: string; kind: s
 async function aiPlan(prompt: string) {
   const email = firebaseAuth?.currentUser?.email || "";
   const usingOwnKey = Boolean((settings.aiApiKey || runtimeDefaults.aiApiKey || "").trim());
-  const response = await fetch("/api/ai/plan", {
+  const response = await fetchWithAuth("/api/ai/plan", {
     method: "POST",
     headers: {
       "content-type": "application/json"
@@ -601,6 +623,7 @@ async function aiPlan(prompt: string) {
   saveItems();
   renderItems();
   renderSummary();
+  items.forEach((item) => saveRemoteItem(item).catch(() => null));
 
   const provider = typeof data?.provider === "string" ? data.provider : "";
   const trialRemaining = Number(data?.trial?.creditsRemaining || 0);
@@ -750,6 +773,56 @@ function renderVault() {
   });
 }
 
+async function refreshRemoteItems() {
+  const response = await fetchWithAuth("/api/items", { method: "GET" });
+  if (!response.ok) return;
+  const data = await response.json();
+  if (!Array.isArray(data?.items)) return;
+  if (data.items.length === 0 && items.length) {
+    items.forEach((item) => saveRemoteItem(item).catch(() => null));
+    return;
+  }
+  items = data.items;
+  saveItems();
+  renderItems();
+  renderSummary();
+}
+
+async function saveRemoteItem(item: any) {
+  const payload = {
+    ...item,
+    resources: Array.isArray(item?.resources) ? item.resources : item?.tags || [],
+    tags: Array.isArray(item?.tags) ? item.tags : item?.resources || []
+  };
+  await fetchWithAuth("/api/items", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(payload)
+  });
+}
+
+async function refreshRemoteVault() {
+  const response = await fetchWithAuth("/api/vault", { method: "GET" });
+  if (!response.ok) return;
+  const data = await response.json();
+  if (!Array.isArray(data?.entries)) return;
+  if (data.entries.length === 0 && vaultEntries.length) {
+    vaultEntries.forEach((entry) => saveRemoteVault(entry).catch(() => null));
+    return;
+  }
+  vaultEntries = data.entries;
+  saveVaultEntries();
+  renderVault();
+}
+
+async function saveRemoteVault(entry: VaultEntry) {
+  await fetchWithAuth("/api/vault", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(entry)
+  });
+}
+
 async function saveVaultEntry() {
   if (!firebaseAuth?.currentUser) {
     openAuth("login");
@@ -776,6 +849,7 @@ async function saveVaultEntry() {
 
   vaultEntries.unshift(entry);
   saveVaultEntries();
+  saveRemoteVault(entry).catch(() => null);
   vaultPassphraseCache = passphrase;
   dom.vaultLabel.value = "";
   dom.vaultTags.value = "";

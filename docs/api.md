@@ -114,8 +114,98 @@ Notes:
 - Returns `cache-control: max-age=300`.
 - Locale mapping currently supports Spanish detection for: `ES`, `MX`, `CO`, `AR`, `CL`, `PE`; default is `en`.
 
+## `GET /api/items`
+Returns saved items for the authenticated user.
+
+Authentication: requires Firebase ID token (Authorization: Bearer).
+
+Success response (`200`):
+```json
+{
+  "items": [
+    {
+      "id": "i-123",
+      "kind": "task",
+      "title": "Example",
+      "summary": "...",
+      "status": "inbox",
+      "startDate": "2026-02-18",
+      "dueDate": "2026-02-20",
+      "doneSubtasks": 0,
+      "totalSubtasks": 1,
+      "resources": ["AI"],
+      "tags": ["Brief"],
+      "updatedAt": "2026-02-18T00:00:00.000Z"
+    }
+  ]
+}
+```
+
+## `POST /api/items`
+Upserts a single item for the authenticated user.
+
+Authentication: requires Firebase ID token (Authorization: Bearer).
+
+Request body:
+```json
+{
+  "id": "i-123",
+  "kind": "task",
+  "title": "Example",
+  "summary": "...",
+  "status": "inbox",
+  "startDate": "2026-02-18",
+  "dueDate": "2026-02-20",
+  "doneSubtasks": 0,
+  "totalSubtasks": 1,
+  "resources": ["AI"],
+  "tags": ["Brief"]
+}
+```
+
+## `GET /api/vault`
+Returns vault entries for the authenticated user.
+
+Authentication: requires Firebase ID token (Authorization: Bearer).
+
+Success response (`200`):
+```json
+{
+  "entries": [
+    {
+      "id": "vault-123",
+      "label": "GitHub Token",
+      "tags": ["dev"],
+      "cipher": "...",
+      "iv": "...",
+      "salt": "...",
+      "createdAt": "2026-02-18T00:00:00.000Z"
+    }
+  ]
+}
+```
+
+## `POST /api/vault`
+Upserts a vault entry for the authenticated user.
+
+Authentication: requires Firebase ID token (Authorization: Bearer).
+
+Request body:
+```json
+{
+  "id": "vault-123",
+  "label": "GitHub Token",
+  "tags": ["dev"],
+  "cipher": "...",
+  "iv": "...",
+  "salt": "..."
+}
+```
+
 ## `POST /api/ai/plan`
 Creates planning tasks from a user prompt through a server-side provider call.
+
+Authentication: requires Firebase ID token (Authorization: Bearer).
 
 Request body:
 ```json
